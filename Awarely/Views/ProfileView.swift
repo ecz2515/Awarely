@@ -28,18 +28,20 @@ struct ProfileView: View {
                 .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 32) {
                         // App Info Section
                         appInfoSection
+                        
+                        // Statistics Section
+                        statisticsSection
                         
                         // Notifications Section
                         notificationsSection
                         
-                        // Actions Section
-                        actionsSection
+                        Spacer(minLength: 40)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                    .padding(.top, 40)
                     .padding(.bottom, 100)
                 }
             }
@@ -47,41 +49,96 @@ struct ProfileView: View {
     }
     
     private var appInfoSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(.ultraThinMaterial)
-                    .frame(width: 80, height: 80)
+                    .fill(
+                        LinearGradient(
+                            colors: [.blue.opacity(0.2), .purple.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 100, height: 100)
                 
                 Image(systemName: "brain.head.profile")
-                    .font(.system(size: 32, weight: .medium))
+                    .font(.system(size: 40, weight: .medium))
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
             }
             
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 Text("Awarely")
-                    .font(.title2.weight(.bold))
+                    .font(.title.weight(.bold))
                     .foregroundStyle(.primary)
                 
                 Text("Building awareness of your time")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.vertical, 20)
+    }
+    
+    private var statisticsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Your Progress")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+            
+            HStack(spacing: 12) {
+                StatCard(
+                    title: "Total Entries",
+                    value: "\(entries.count)",
+                    icon: "list.bullet",
+                    color: .blue
+                )
+                
+                StatCard(
+                    title: "This Week",
+                    value: "\(weeklyEntries)",
+                    icon: "calendar",
+                    color: .green
+                )
+            }
+            
+            HStack(spacing: 12) {
+                StatCard(
+                    title: "This Month",
+                    value: "\(monthlyEntries)",
+                    icon: "chart.line.uptrend.xyaxis",
+                    color: .orange
+                )
+                
+                StatCard(
+                    title: "Streak",
+                    value: "\(currentStreak)",
+                    icon: "flame",
+                    color: .red
+                )
+            }
+        }
     }
     
     private var notificationsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Notifications")
                 .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
             
-            VStack(spacing: 12) {
+            VStack(spacing: 16) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Reminder Notifications")
                             .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
                         Text("Get reminded to log your activities")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -94,49 +151,69 @@ struct ProfileView: View {
                 }
                 
                 if notificationEnabled {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 12) {
                         Text("Reminder Interval")
                             .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
                         
                         Picker("Interval", selection: $reminderInterval) {
-                            Text("15 minutes").tag(TimeInterval(15 * 60))
-                            Text("30 minutes").tag(TimeInterval(30 * 60))
-                            Text("45 minutes").tag(TimeInterval(45 * 60))
+                            Text("15 min").tag(TimeInterval(15 * 60))
+                            Text("30 min").tag(TimeInterval(30 * 60))
+                            Text("45 min").tag(TimeInterval(45 * 60))
                             Text("1 hour").tag(TimeInterval(60 * 60))
                         }
                         .pickerStyle(.segmented)
                     }
                 }
             }
-            .padding(16)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(.quaternary, lineWidth: 0.5)
+                    )
+            )
         }
     }
     
-    private var actionsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Actions")
-                .font(.headline.weight(.semibold))
-            
-            VStack(spacing: 8) {
-                ActionButton(
-                    title: "Export Data",
-                    icon: "square.and.arrow.up",
-                    color: .blue
-                ) {
-                    // Export functionality
-                }
-                
-                ActionButton(
-                    title: "Clear All Data",
-                    icon: "trash",
-                    color: .red
-                ) {
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                        entries.removeAll()
-                    }
-                }
+    // MARK: - Computed Properties
+    
+    private var weeklyEntries: Int {
+        let calendar = Calendar.current
+        let weekAgo = calendar.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        return entries.filter { entry in
+            entry.timestamp >= weekAgo
+        }.count
+    }
+    
+    private var monthlyEntries: Int {
+        let calendar = Calendar.current
+        let monthAgo = calendar.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+        return entries.filter { entry in
+            entry.timestamp >= monthAgo
+        }.count
+    }
+    
+    private var currentStreak: Int {
+        let calendar = Calendar.current
+        var streak = 0
+        var currentDate = Date()
+        
+        while true {
+            let dayEntries = entries.filter { entry in
+                calendar.isDate(entry.timestamp, inSameDayAs: currentDate)
             }
+            
+            if dayEntries.isEmpty {
+                break
+            }
+            
+            streak += 1
+            currentDate = calendar.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
         }
+        
+        return streak
     }
 }

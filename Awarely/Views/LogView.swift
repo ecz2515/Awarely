@@ -11,8 +11,9 @@ struct LogView: View {
     @Binding var entries: [LogEntry]
     @Binding var newEntry: String
     @Binding var selectedTags: Set<String>
+    @Binding var customTags: [String]
     @FocusState var isFieldFocused: Bool
-    let commonTags: [String]
+    @State private var showingCustomTags = false
     
     var body: some View {
         NavigationStack {
@@ -29,20 +30,30 @@ struct LogView: View {
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    // Header
-                    logHeader
-                    
-                    // Tags Section
-                    tagsSection
-                    
-                    // Input Section
-                    inputSection
-                    
-                    Spacer()
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Header
+                        logHeader
+                        
+                        // Quick Tags Section
+                        quickTagsSection
+                        
+                        // Customize Tags Section
+                        customizeTagsSection
+                        
+                        // Input Section
+                        inputSection
+                        
+                        Spacer(minLength: 40)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 40)
+                    .padding(.bottom, 20)
                 }
             }
-
+            .sheet(isPresented: $showingCustomTags) {
+                CustomTagsView(customTags: $customTags)
+            }
         }
     }
     
@@ -68,88 +79,84 @@ struct LogView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.top, 20)
-        .padding(.bottom, 16)
+        .padding(.bottom, 24)
     }
     
-    private var tagsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private var quickTagsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
             Text("Quick Tags")
                 .font(.headline.weight(.semibold))
-                .padding(.horizontal, 20)
+                .foregroundStyle(.primary)
             
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(commonTags, id: \.self) { tag in
-                        TagButton(
-                            title: tag,
-                            isSelected: selectedTags.contains(tag)
-                        ) {
-                            if selectedTags.contains(tag) {
-                                selectedTags.remove(tag)
-                            } else {
-                                selectedTags.insert(tag)
-                            }
+            if customTags.isEmpty {
+                Text("Add custom tags to quickly log common activities")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                FlowLayout(spacing: 8) {
+                    ForEach(customTags, id: \.self) { tag in
+                        Button(action: {
+                            addTagToText(tag)
+                        }) {
+                            Text(tag)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.blue)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color.blue.opacity(0.1), in: Capsule())
                         }
                     }
                 }
-                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(.bottom, 20)
     }
     
-    private var inputSection: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 12) {
+    private var customizeTagsSection: some View {
+        VStack(spacing: 12) {
+            Button(action: {
+                showingCustomTags = true
+            }) {
                 HStack(spacing: 8) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(.blue)
-                        .opacity(0.7)
-                    
-                    TextField("Describe what you did...", text: $newEntry, axis: .vertical)
-                        .textInputAutocapitalization(.sentences)
-                        .disableAutocorrection(false)
-                        .focused($isFieldFocused)
-                        .submitLabel(.done)
-                        .onSubmit { addEntry() }
-                        .font(.body)
-                        .lineLimit(3...6)
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.subheadline)
+                    Text("Customize Quick Tags")
+                        .font(.subheadline.weight(.medium))
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(.quaternary, lineWidth: 0.5)
-                )
-                
-                // Selected tags display
-                if !selectedTags.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(Array(selectedTags), id: \.self) { tag in
-                                HStack(spacing: 4) {
-                                    Text(tag)
-                                        .font(.caption.weight(.medium))
-                                    Button(action: {
-                                        selectedTags.remove(tag)
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.caption)
-                                    }
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(.blue.opacity(0.1), in: Capsule())
-                                .foregroundStyle(.blue)
-                            }
-                        }
-                        .padding(.horizontal, 4)
-                    }
-                }
+                .padding(.vertical, 12)
+                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+        }
+        .padding(.bottom, 24)
+    }
+    
+    private var inputSection: some View {
+        VStack(spacing: 20) {
+            VStack(spacing: 12) {
+                TextField("Describe what you did...", text: $newEntry, axis: .vertical)
+                    .textInputAutocapitalization(.sentences)
+                    .disableAutocorrection(false)
+                    .focused($isFieldFocused)
+                    .submitLabel(.done)
+                    .onSubmit { addEntry() }
+                    .font(.body)
+                    .lineLimit(3...6)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(.quaternary, lineWidth: 0.5)
+                    )
             }
             
             Button(action: addEntry) {
@@ -173,7 +180,21 @@ struct LogView: View {
             .scaleEffect(newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.98 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        .padding(.horizontal, 20)
+    }
+    
+    private func addTagToText(_ tag: String) {
+        let trimmed = newEntry.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if trimmed.isEmpty {
+            // First tag - just add it
+            newEntry = tag
+        } else {
+            // Subsequent tag - add ", [tag]"
+            newEntry = trimmed + ", " + tag
+        }
+        
+        // Focus the text field and move cursor to end
+        isFieldFocused = true
     }
     
     private func addEntry() {
@@ -182,7 +203,7 @@ struct LogView: View {
         
         let newLogEntry = LogEntry(
             text: trimmed,
-            tags: Array(selectedTags),
+            tags: [], // No longer using selectedTags since we're embedding tags in text
             timestamp: Date()
         )
         
@@ -191,7 +212,133 @@ struct LogView: View {
         }
         
         newEntry = ""
-        selectedTags.removeAll()
         isFieldFocused = true
+    }
+}
+
+struct CustomTagsView: View {
+    @Binding var customTags: [String]
+    @Environment(\.dismiss) private var dismiss
+    @State private var newTag = ""
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Add new tag section
+                VStack(spacing: 16) {
+                    HStack {
+                        TextField("Add new tag...", text: $newTag)
+                            .textFieldStyle(.roundedBorder)
+                        
+                        Button("Add") {
+                            addTag()
+                        }
+                        .disabled(newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .foregroundStyle(.blue)
+                    }
+                }
+                .padding(20)
+                .background(Color(.systemGray6))
+                
+                // Tags list
+                List {
+                    ForEach(customTags, id: \.self) { tag in
+                        HStack {
+                            Text(tag)
+                                .font(.body)
+                            Spacer()
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button("Delete", role: .destructive) {
+                                deleteTag(tag)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Custom Tags")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func addTag() {
+        let trimmed = newTag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty && !customTags.contains(trimmed) else { return }
+        
+        customTags.append(trimmed)
+        newTag = ""
+    }
+    
+    private func deleteTag(_ tag: String) {
+        customTags.removeAll { $0 == tag }
+    }
+}
+
+struct FlowLayout: Layout {
+    let spacing: CGFloat
+    
+    init(spacing: CGFloat = 8) {
+        self.spacing = spacing
+    }
+    
+    func sizeThatFits(proposal: ProposedViewSize, subviews: LayoutSubviews, cache: inout ()) -> CGSize {
+        let result = FlowResult(
+            in: proposal.replacingUnspecifiedDimensions().width,
+            subviews: subviews,
+            spacing: spacing
+        )
+        return result.size
+    }
+    
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: LayoutSubviews, cache: inout ()) {
+        let result = FlowResult(
+            in: bounds.width,
+            subviews: subviews,
+            spacing: spacing
+        )
+        
+        for (index, subview) in subviews.enumerated() {
+            let position = result.positions[index]
+            subview.place(at: CGPoint(x: position.x + bounds.minX, y: position.y + bounds.minY), proposal: .unspecified)
+        }
+    }
+}
+
+struct FlowResult {
+    let positions: [CGPoint]
+    let size: CGSize
+    
+    init(in maxWidth: CGFloat, subviews: LayoutSubviews, spacing: CGFloat) {
+        var positions: [CGPoint] = []
+        var currentX: CGFloat = 0
+        var currentY: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        var maxWidthUsed: CGFloat = 0
+        
+        for subview in subviews {
+            let subviewSize = subview.sizeThatFits(.unspecified)
+            
+            if currentX + subviewSize.width > maxWidth && currentX > 0 {
+                // Move to next line
+                currentX = 0
+                currentY += lineHeight + spacing
+                lineHeight = 0
+            }
+            
+            positions.append(CGPoint(x: currentX, y: currentY))
+            currentX += subviewSize.width + spacing
+            lineHeight = max(lineHeight, subviewSize.height)
+            maxWidthUsed = max(maxWidthUsed, currentX - spacing)
+        }
+        
+        self.positions = positions
+        self.size = CGSize(width: maxWidthUsed, height: currentY + lineHeight)
     }
 }

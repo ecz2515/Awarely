@@ -12,15 +12,10 @@ struct ContentView: View {
     @State private var entries: [LogEntry] = []
     @State private var newEntry: String = ""
     @State private var selectedTags: Set<String> = []
+    @State private var customTags: [String] = ["Read a book", "Practice violin", "Work on startup", "Journal", "Practice German", "Exercise", "Practice conducting", "Take multivitamins", "Meditate", "Work", "Work meetings"]
     @FocusState private var isFieldFocused: Bool
     @State private var notificationEnabled = true
     @State private var reminderInterval: TimeInterval = 30 * 60 // 30 minutes
-    
-    // Common tags for quick selection
-    let commonTags = [
-        "Work", "Study", "Exercise", "Social", "Chores", 
-        "Entertainment", "Reading", "Cooking", "Travel", "Rest"
-    ]
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -35,8 +30,8 @@ struct ContentView: View {
                 entries: $entries,
                 newEntry: $newEntry,
                 selectedTags: $selectedTags,
-                isFieldFocused: _isFieldFocused,
-                commonTags: commonTags
+                customTags: $customTags,
+                isFieldFocused: _isFieldFocused
             )
             .tabItem {
                 Image(systemName: "plus.circle.fill")
@@ -65,9 +60,6 @@ struct ContentView: View {
         // Add some sample entries for demonstration
         if entries.isEmpty {
             entries = [
-                LogEntry(text: "Had morning coffee and checked emails", tags: ["Work"], timestamp: Date().addingTimeInterval(-3600)),
-                LogEntry(text: "Went for a 30-minute walk", tags: ["Exercise"], timestamp: Date().addingTimeInterval(-1800)),
-                LogEntry(text: "Read a chapter of my book", tags: ["Reading"], timestamp: Date().addingTimeInterval(-900))
             ]
         }
     }

@@ -9,25 +9,13 @@ import SwiftUI
 
 struct HomeView: View {
     @Binding var entries: [LogEntry]
-    @State private var showingAllEntries = false
+    @State private var showingEntriesList = false
     
     var todayEntries: [LogEntry] {
         let calendar = Calendar.current
         return entries.filter { entry in
             calendar.isDate(entry.timestamp, inSameDayAs: Date())
         }.sorted { $0.timestamp > $1.timestamp } // Newest first
-    }
-    
-    var displayedEntries: [LogEntry] {
-        if showingAllEntries {
-            return todayEntries
-        } else {
-            return Array(todayEntries.prefix(3))
-        }
-    }
-    
-    var shouldShowSeeMore: Bool {
-        todayEntries.count > 4
     }
     
     var body: some View {
@@ -45,38 +33,71 @@ struct HomeView: View {
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    // Header
-                    header
-                    
-                    // Entries Section
-                    entriesSection
-                    
-                    Spacer(minLength: 0)
-                    
-                    // Statistics Section (sticky bottom)
-                    statisticsSection
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // "Your Entries" Title
+                        titleSection
+                        
+                        // Statistics Section
+                        statisticsSection
+                        
+                        // View All Entries Button
+                        viewAllEntriesButton
+                        
+                        // Date Section
+                        dateSection
+                        
+                        // Today's Entries
+                        entriesSection
+                        
+                        Spacer(minLength: 40)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 40)
+                    .padding(.bottom, 20)
                 }
             }
         }
+        .sheet(isPresented: $showingEntriesList) {
+            EntriesListView(entries: $entries)
+        }
     }
     
-    private var header: some View {
+    private var titleSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Your Day So Far")
+            Text("Your Entries")
                 .font(.largeTitle.weight(.bold))
                 .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var statisticsSection: some View {
+        HStack(spacing: 12) {
+            StatCard(
+                title: "Total Entries",
+                value: "\(entries.count)",
+                icon: "list.bullet",
+                color: .blue
+            )
             
+            StatCard(
+                title: "This Week",
+                value: "\(weeklyEntries)",
+                icon: "calendar",
+                color: .green
+            )
+        }
+    }
+    
+    private var dateSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
             Text(Date().formatted(date: .complete, time: .omitted))
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(.primary)
                 .tracking(0.5)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.top, 20)
-        .padding(.bottom, 16)
     }
     
     private var entriesSection: some View {
@@ -85,7 +106,7 @@ struct HomeView: View {
                 emptyState
             } else {
                 LazyVStack(spacing: 12) {
-                    ForEach(displayedEntries) { entry in
+                    ForEach(todayEntries) { entry in
                         EnhancedEntryRow(entry: entry) { updated in
                             if let idx = entries.firstIndex(where: { $0.id == updated.id }) {
                                 entries[idx] = updated
@@ -96,30 +117,6 @@ struct HomeView: View {
                             removal: .scale.combined(with: .opacity)
                         ))
                     }
-                }
-                .padding(.horizontal, 20)
-                
-                // See More Button (only if needed)
-                if shouldShowSeeMore {
-                    Button(action: {
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                            showingAllEntries.toggle()
-                        }
-                    }) {
-                        HStack {
-                            Text(showingAllEntries ? "Show Less" : "See More Entries")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(.blue)
-                            
-                            Image(systemName: showingAllEntries ? "chevron.up" : "chevron.down")
-                                .font(.caption)
-                                .foregroundStyle(.blue)
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        .background(.blue.opacity(0.1), in: Capsule())
-                    }
-                    .padding(.top, 16)
                 }
             }
         }
@@ -144,36 +141,32 @@ struct HomeView: View {
         .padding(40)
     }
     
-    private var statisticsSection: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 12) {
-                StatCard(
-                    title: "Total Entries",
-                    value: "\(entries.count)",
-                    icon: "list.bullet",
-                    color: .blue
-                )
+    private var viewAllEntriesButton: some View {
+        Button(action: {
+            showingEntriesList = true
+        }) {
+            HStack {
+                Image(systemName: "calendar")
+                    .font(.subheadline)
+                    .foregroundStyle(.blue)
                 
-                StatCard(
-                    title: "This Week",
-                    value: "\(weeklyEntries)",
-                    icon: "calendar",
-                    color: .green
-                )
+                Text("View All Entries")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.blue)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.blue)
             }
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 20)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color(.systemBackground).opacity(0.8),
-                    Color(.systemBackground)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                Color.blue.opacity(0.1),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
             )
-        )
+        }
     }
     
     private var weeklyEntries: Int {
