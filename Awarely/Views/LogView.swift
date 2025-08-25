@@ -14,6 +14,7 @@ struct LogView: View {
     @Binding var customTags: [String]
     @FocusState var isFieldFocused: Bool
     @State private var showingCustomTags = false
+    @ObservedObject var intervalTimer: IntervalTimer
     
     var body: some View {
         NavigationStack {
@@ -54,6 +55,11 @@ struct LogView: View {
             .sheet(isPresented: $showingCustomTags) {
                 CustomTagsView(customTags: $customTags)
             }
+            .overlay {
+                if !intervalTimer.isLoggingWindow {
+                    TimerOverlay(intervalTimer: intervalTimer)
+                }
+            }
         }
     }
     
@@ -72,10 +78,21 @@ struct LogView: View {
                 
                 Spacer()
                 
-                Image(systemName: "timer")
-                    .font(.title2)
-                    .foregroundStyle(.orange)
-                    .opacity(0.7)
+                VStack(alignment: .trailing, spacing: 4) {
+                    Image(systemName: "timer")
+                        .font(.title2)
+                        .foregroundStyle(.orange)
+                        .opacity(0.7)
+                    
+                    if intervalTimer.isLoggingWindow {
+                        Text("Logging window")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(.green.opacity(0.1), in: Capsule())
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -10,6 +10,7 @@ import SwiftUI
 struct HomeView: View {
     @Binding var entries: [LogEntry]
     @State private var showingEntriesList = false
+    @ObservedObject var intervalTimer: IntervalTimer
     
     var todayEntries: [LogEntry] {
         let calendar = Calendar.current
@@ -37,6 +38,9 @@ struct HomeView: View {
                     VStack(spacing: 24) {
                         // "Your Entries" Title
                         titleSection
+                        
+                        // Timer Status Section
+                        timerStatusSection
                         
                         // Statistics Section
                         statisticsSection
@@ -70,6 +74,45 @@ struct HomeView: View {
                 .foregroundStyle(.primary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var timerStatusSection: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Image(systemName: intervalTimer.isLoggingWindow ? "checkmark.circle.fill" : "timer")
+                        .foregroundStyle(intervalTimer.isLoggingWindow ? .green : .orange)
+                    
+                    Text(intervalTimer.isLoggingWindow ? "Logging Window Active" : "Next Check-in")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                }
+                
+                if intervalTimer.isLoggingWindow {
+                    Text("You can now log your activity")
+                        .font(.subheadline)
+                        .foregroundStyle(.green)
+                } else {
+                    Text("\(intervalTimer.formatTimeRemaining()) until next interval")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            if !intervalTimer.isLoggingWindow {
+                Text(intervalTimer.nextIntervalDate.formatted(date: .omitted, time: .shortened))
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.orange)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(intervalTimer.isLoggingWindow ? Color.green.opacity(0.1) : Color.orange.opacity(0.1))
+        )
     }
     
     private var statisticsSection: some View {

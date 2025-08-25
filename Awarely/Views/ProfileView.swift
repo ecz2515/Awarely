@@ -11,6 +11,7 @@ struct ProfileView: View {
     @Binding var notificationEnabled: Bool
     @Binding var reminderInterval: TimeInterval
     @Binding var entries: [LogEntry]
+    @ObservedObject var intervalTimer: IntervalTimer
     
     var body: some View {
         NavigationStack {

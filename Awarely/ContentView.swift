@@ -16,10 +16,11 @@ struct ContentView: View {
     @FocusState private var isFieldFocused: Bool
     @State private var notificationEnabled = true
     @State private var reminderInterval: TimeInterval = 30 * 60 // 30 minutes
+    @StateObject private var intervalTimer = IntervalTimer()
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            HomeView(entries: $entries)
+            HomeView(entries: $entries, intervalTimer: intervalTimer)
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text("Home")
@@ -31,7 +32,8 @@ struct ContentView: View {
                 newEntry: $newEntry,
                 selectedTags: $selectedTags,
                 customTags: $customTags,
-                isFieldFocused: _isFieldFocused
+                isFieldFocused: _isFieldFocused,
+                intervalTimer: intervalTimer
             )
             .tabItem {
                 Image(systemName: "plus.circle.fill")
@@ -42,7 +44,8 @@ struct ContentView: View {
             ProfileView(
                 notificationEnabled: $notificationEnabled,
                 reminderInterval: $reminderInterval,
-                entries: $entries
+                entries: $entries,
+                intervalTimer: intervalTimer
             )
             .tabItem {
                 Image(systemName: "person.circle.fill")
@@ -53,6 +56,7 @@ struct ContentView: View {
         .accentColor(.blue)
         .onAppear {
             loadSampleData()
+            NotificationManager.shared.requestPermission()
         }
     }
     
