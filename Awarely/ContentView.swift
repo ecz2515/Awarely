@@ -6,56 +6,73 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
+    @State private var selectedTab = 0
+    @State private var entries: [LogEntry] = []
+    @State private var newEntry: String = ""
+    @State private var selectedTags: Set<String> = []
+    @FocusState private var isFieldFocused: Bool
+    @State private var notificationEnabled = true
+    @State private var reminderInterval: TimeInterval = 30 * 60 // 30 minutes
+    
+    // Common tags for quick selection
+    let commonTags = [
+        "Work", "Study", "Exercise", "Social", "Chores", 
+        "Entertainment", "Reading", "Cooking", "Travel", "Rest"
+    ]
+    
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
+        TabView(selection: $selectedTab) {
+            HomeView(entries: $entries)
+                .tabItem {
+                    Image(systemName: "house.fill")
+                    Text("Home")
                 }
-                .onDelete(perform: deleteItems)
+                .tag(0)
+            
+            LogView(
+                entries: $entries,
+                newEntry: $newEntry,
+                selectedTags: $selectedTags,
+                isFieldFocused: _isFieldFocused,
+                commonTags: commonTags
+            )
+            .tabItem {
+                Image(systemName: "plus.circle.fill")
+                Text("Log")
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
+            .tag(1)
+            
+            ProfileView(
+                notificationEnabled: $notificationEnabled,
+                reminderInterval: $reminderInterval,
+                entries: $entries
+            )
+            .tabItem {
+                Image(systemName: "person.circle.fill")
+                Text("Profile")
             }
-        } detail: {
-            Text("Select an item")
+            .tag(2)
+        }
+        .accentColor(.blue)
+        .onAppear {
+            loadSampleData()
         }
     }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
+    
+    private func loadSampleData() {
+        // Add some sample entries for demonstration
+        if entries.isEmpty {
+            entries = [
+                LogEntry(text: "Had morning coffee and checked emails", tags: ["Work"], timestamp: Date().addingTimeInterval(-3600)),
+                LogEntry(text: "Went for a 30-minute walk", tags: ["Exercise"], timestamp: Date().addingTimeInterval(-1800)),
+                LogEntry(text: "Read a chapter of my book", tags: ["Reading"], timestamp: Date().addingTimeInterval(-900))
+            ]
         }
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }
