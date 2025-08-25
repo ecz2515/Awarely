@@ -53,8 +53,10 @@ class IntervalTimer: ObservableObject {
         let now = Date()
         timeRemaining = nextIntervalDate.timeIntervalSince(now)
         
-        // Check if we're in the logging window (last 5 minutes of the interval)
-        let loggingWindowDuration: TimeInterval = 5 * 60 // 5 minutes
+        // Check if we're in the logging window using the grace period setting
+        let gracePeriodMinutes = UserDefaults.standard.integer(forKey: "loggingGracePeriod")
+        let gracePeriod = gracePeriodMinutes > 0 ? gracePeriodMinutes : 15 // Default to 15 minutes
+        let loggingWindowDuration: TimeInterval = TimeInterval(gracePeriod * 60)
         isLoggingWindow = timeRemaining <= loggingWindowDuration
         
         // If time is up, calculate next interval

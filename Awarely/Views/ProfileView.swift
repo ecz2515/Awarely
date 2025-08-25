@@ -13,6 +13,11 @@ struct ProfileView: View {
     @Binding var entries: [LogEntry]
     @ObservedObject var intervalTimer: IntervalTimer
     
+    // New notification timing settings
+    @State private var notificationStartTime = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
+    @State private var notificationEndTime = Calendar.current.date(from: DateComponents(hour: 18, minute: 0)) ?? Date()
+    @State private var loggingGracePeriod: Int = 15 // minutes
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -33,11 +38,16 @@ struct ProfileView: View {
                         // App Info Section
                         appInfoSection
                         
-                        // Statistics Section
-                        statisticsSection
-                        
                         // Notifications Section
                         notificationsSection
+                        
+                        // Notification Timing Section
+                        if notificationEnabled {
+                            notificationTimingSection
+                        }
+                        
+                        // Logging Settings Section
+                        loggingSettingsSection
                         
                         Spacer(minLength: 40)
                     }
@@ -47,6 +57,12 @@ struct ProfileView: View {
                 }
             }
         }
+        .onAppear {
+            loadSettings()
+        }
+        .onChange(of: notificationStartTime) { saveSettings() }
+        .onChange(of: notificationEndTime) { saveSettings() }
+        .onChange(of: loggingGracePeriod) { saveSettings() }
     }
     
     private var appInfoSection: some View {
@@ -86,46 +102,6 @@ struct ProfileView: View {
             }
         }
         .padding(.vertical, 20)
-    }
-    
-    private var statisticsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Your Progress")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.primary)
-            
-            HStack(spacing: 12) {
-                StatCard(
-                    title: "Total Entries",
-                    value: "\(entries.count)",
-                    icon: "list.bullet",
-                    color: .blue
-                )
-                
-                StatCard(
-                    title: "This Week",
-                    value: "\(weeklyEntries)",
-                    icon: "calendar",
-                    color: .green
-                )
-            }
-            
-            HStack(spacing: 12) {
-                StatCard(
-                    title: "This Month",
-                    value: "\(monthlyEntries)",
-                    icon: "chart.line.uptrend.xyaxis",
-                    color: .orange
-                )
-                
-                StatCard(
-                    title: "Streak",
-                    value: "\(currentStreak)",
-                    icon: "flame",
-                    color: .red
-                )
-            }
-        }
     }
     
     private var notificationsSection: some View {
@@ -179,42 +155,116 @@ struct ProfileView: View {
         }
     }
     
-    // MARK: - Computed Properties
-    
-    private var weeklyEntries: Int {
-        let calendar = Calendar.current
-        let weekAgo = calendar.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        return entries.filter { entry in
-            entry.timestamp >= weekAgo
-        }.count
+    private var notificationTimingSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Notification Timing")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+            
+            Text("Set when you want to receive logging reminders")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            
+            VStack(spacing: 12) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Start Time")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                        Text("When to start sending notifications")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    DatePicker("Start Time", selection: $notificationStartTime, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                }
+                
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("End Time")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                        Text("When to stop sending notifications")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    DatePicker("End Time", selection: $notificationEndTime, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                }
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(.quaternary, lineWidth: 0.5)
+                    )
+            )
+        }
     }
     
-    private var monthlyEntries: Int {
-        let calendar = Calendar.current
-        let monthAgo = calendar.date(byAdding: .month, value: -1, to: Date()) ?? Date()
-        return entries.filter { entry in
-            entry.timestamp >= monthAgo
-        }.count
+    private var loggingSettingsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Logging Settings")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+            
+            VStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Logging Grace Period")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                    Text("How many minutes beforehand you can log the previous time interval")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    Picker("Grace Period", selection: $loggingGracePeriod) {
+                        Text("15 minutes").tag(15)
+                        Text("30 minutes").tag(30)
+                        Text("45 minutes").tag(45)
+                        Text("1 hour").tag(60)
+                    }
+                    .pickerStyle(.segmented)
+                }
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(.quaternary, lineWidth: 0.5)
+                    )
+            )
+        }
     }
     
-    private var currentStreak: Int {
-        let calendar = Calendar.current
-        var streak = 0
-        var currentDate = Date()
+    // MARK: - Settings Persistence
+    
+    private func loadSettings() {
+        let defaults = UserDefaults.standard
         
-        while true {
-            let dayEntries = entries.filter { entry in
-                calendar.isDate(entry.timestamp, inSameDayAs: currentDate)
-            }
-            
-            if dayEntries.isEmpty {
-                break
-            }
-            
-            streak += 1
-            currentDate = calendar.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
+        if let startTime = defaults.object(forKey: "notificationStartTime") as? Date {
+            notificationStartTime = startTime
         }
         
-        return streak
+        if let endTime = defaults.object(forKey: "notificationEndTime") as? Date {
+            notificationEndTime = endTime
+        }
+        
+        loggingGracePeriod = defaults.integer(forKey: "loggingGracePeriod")
+        if loggingGracePeriod == 0 {
+            loggingGracePeriod = 15 // Default to 15 minutes
+        }
+    }
+    
+    private func saveSettings() {
+        let defaults = UserDefaults.standard
+        defaults.set(notificationStartTime, forKey: "notificationStartTime")
+        defaults.set(notificationEndTime, forKey: "notificationEndTime")
+        defaults.set(loggingGracePeriod, forKey: "loggingGracePeriod")
     }
 }

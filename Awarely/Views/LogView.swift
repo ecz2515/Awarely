@@ -16,6 +16,12 @@ struct LogView: View {
     @State private var showingCustomTags = false
     @ObservedObject var intervalTimer: IntervalTimer
     
+    private var gracePeriodText: String {
+        let gracePeriod = UserDefaults.standard.integer(forKey: "loggingGracePeriod")
+        let gracePeriodMinutes = gracePeriod > 0 ? gracePeriod : 15
+        return "\(gracePeriodMinutes)"
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -74,6 +80,10 @@ struct LogView: View {
                     Text("Log your activity for the past 30 minutes")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    
+                    Text("Grace period: \(gracePeriodText) minutes before interval ends")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
                 
                 Spacer()
@@ -187,15 +197,23 @@ struct LogView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
-                    newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty 
+                    (newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !intervalTimer.isLoggingWindow)
                     ? .secondary 
                     : Color.blue,
                     in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                 )
             }
-            .disabled(newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .scaleEffect(newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.98 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !intervalTimer.isLoggingWindow)
+            .scaleEffect((newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !intervalTimer.isLoggingWindow) ? 0.98 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !intervalTimer.isLoggingWindow)
+            
+            if !intervalTimer.isLoggingWindow {
+                Text("Logging is only available during the grace period")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 8)
+            }
         }
     }
     
@@ -217,6 +235,12 @@ struct LogView: View {
     private func addEntry() {
         let trimmed = newEntry.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        
+        // Check if we're within the logging grace period
+        if !intervalTimer.isLoggingWindow {
+            // Show an alert or message that logging is not allowed outside the grace period
+            return
+        }
         
         let newLogEntry = LogEntry(
             text: trimmed,
