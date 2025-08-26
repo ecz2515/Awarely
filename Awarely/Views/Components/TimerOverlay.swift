@@ -21,24 +21,13 @@ struct TimerOverlay: View {
                 
                 // Timer text
                 VStack(spacing: 8) {
-                    Text("Next check-in")
-                        .font(.title2.weight(.medium))
-                        .foregroundStyle(.primary)
-                    
                     Text(intervalTimer.formatTimeRemaining())
                         .font(.system(size: 48, weight: .bold, design: .monospaced))
                         .foregroundStyle(.orange)
                         .contentTransition(.numericText())
-                }
-                
-                // Next interval time
-                VStack(spacing: 4) {
-                    Text("Next interval at")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
                     
-                    Text(intervalTimer.nextIntervalDate.formatted(date: .omitted, time: .shortened))
-                        .font(.headline.weight(.semibold))
+                    Text("until next check-in")
+                        .font(.title2.weight(.medium))
                         .foregroundStyle(.primary)
                 }
                 

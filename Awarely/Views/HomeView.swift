@@ -79,40 +79,13 @@ struct HomeView: View {
     
     private var timerStatusSection: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Image(systemName: intervalTimer.isLateGracePeriod ? "exclamationmark.triangle.fill" : (intervalTimer.isLoggingWindow ? "checkmark.circle.fill" : "timer"))
-                        .foregroundStyle(intervalTimer.isLateGracePeriod ? .red : (intervalTimer.isLoggingWindow ? .green : .orange))
-                    
-                    Text(intervalTimer.isLateGracePeriod ? "Late Grace Period" : (intervalTimer.isLoggingWindow ? "Logging Window Active" : "Next Check-in"))
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                }
+            HStack {
+                Image(systemName: intervalTimer.isLateGracePeriod ? "exclamationmark.triangle.fill" : (intervalTimer.isLoggingWindow ? "checkmark.circle.fill" : "timer"))
+                    .foregroundStyle(intervalTimer.isLateGracePeriod ? .red : (intervalTimer.isLoggingWindow ? .green : .orange))
                 
-                if intervalTimer.isLateGracePeriod {
-                    Text("Log previous interval (5 min grace period)")
-                        .font(.subheadline)
-                        .foregroundStyle(.red)
-                } else if intervalTimer.isLoggingWindow {
-                    Text("You can now log your activity")
-                        .font(.subheadline)
-                        .foregroundStyle(.green)
-                } else {
-                    Text("\(intervalTimer.formatTimeRemaining()) until next interval")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                
-                // Show current time period
-                if intervalTimer.isLateGracePeriod {
-                    Text("Late grace period: \(intervalTimer.getIntervalString(for: intervalTimer.getPreviousIntervalStart(), endDate: intervalTimer.getPreviousIntervalEnd()))")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                } else {
-                    Text("Current period: \(intervalTimer.getIntervalString(for: intervalTimer.getCurrentIntervalStart(), endDate: intervalTimer.getCurrentIntervalEnd()))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text(intervalTimer.isLateGracePeriod ? "Log your previous activity now" : (intervalTimer.isLoggingWindow ? "Ready to log your activity" : "\(intervalTimer.formatTimeRemaining()) until next check-in"))
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
             }
             
             Spacer()

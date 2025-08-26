@@ -33,6 +33,12 @@ struct LogView: View {
     private var isLoggingDisabled: Bool {
         let currentInterval = getCurrentLoggingInterval()
         
+        // If we're in late grace period, allow logging even if there's an entry
+        // This allows users to update their late entry
+        if intervalTimer.isLateGracePeriod {
+            return false
+        }
+        
         // Check if we already have an entry for this interval
         let hasEntry = entries.contains { entry in
             let entryStart = entry.timePeriodStart
@@ -45,9 +51,8 @@ struct LogView: View {
     }
     
     private var shouldNavigateBack: Bool {
-        // Navigate back if user has already logged for the current interval and we're not in late grace period
+        // In late grace period, never navigate back - allow logging
         if intervalTimer.isLateGracePeriod {
-            // In late grace period, allow logging for previous interval
             return false
         }
         
