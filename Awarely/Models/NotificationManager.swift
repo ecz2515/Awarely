@@ -84,7 +84,7 @@ class NotificationManager: ObservableObject {
     func isWithinLoggingGracePeriod(for targetTime: Date) -> Bool {
         let defaults = UserDefaults.standard
         let gracePeriodMinutes = defaults.integer(forKey: "loggingGracePeriod")
-        let gracePeriod = gracePeriodMinutes > 0 ? gracePeriodMinutes : 15 // Default to 15 minutes
+        let gracePeriod = gracePeriodMinutes > 0 ? gracePeriodMinutes : 5 // Default to 5 minutes
         
         let now = Date()
         let timeDifference = now.timeIntervalSince(targetTime)
@@ -97,6 +97,6 @@ class NotificationManager: ObservableObject {
     func getLoggingGracePeriod() -> Int {
         let defaults = UserDefaults.standard
         let gracePeriod = defaults.integer(forKey: "loggingGracePeriod")
-        return gracePeriod > 0 ? gracePeriod : 15 // Default to 15 minutes
+        return gracePeriod > 0 ? gracePeriod : 5 // Default to 5 minutes
     }
 }

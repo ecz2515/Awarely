@@ -17,12 +17,9 @@ struct EnhancedEntryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(entry.timeString)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.ultraThinMaterial, in: Capsule())
+                Text(entry.timePeriodString)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.blue)
                 
                 Spacer()
                 Button {

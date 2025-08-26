@@ -16,7 +16,7 @@ struct ProfileView: View {
     // New notification timing settings
     @State private var notificationStartTime = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
     @State private var notificationEndTime = Calendar.current.date(from: DateComponents(hour: 18, minute: 0)) ?? Date()
-    @State private var loggingGracePeriod: Int = 15 // minutes
+    @State private var loggingGracePeriod: Int = 5 // minutes
     
     var body: some View {
         NavigationStack {
@@ -63,6 +63,14 @@ struct ProfileView: View {
         .onChange(of: notificationStartTime) { saveSettings() }
         .onChange(of: notificationEndTime) { saveSettings() }
         .onChange(of: loggingGracePeriod) { saveSettings() }
+        .onChange(of: reminderInterval) { 
+            // Ensure grace period doesn't exceed reminder interval
+            let maxGracePeriod = Int(reminderInterval / 60)
+            if loggingGracePeriod > maxGracePeriod {
+                loggingGracePeriod = maxGracePeriod
+            }
+            saveSettings()
+        }
     }
     
     private var appInfoSection: some View {
@@ -213,21 +221,45 @@ struct ProfileView: View {
                 .foregroundStyle(.primary)
             
             VStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Logging Grace Period")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
-                    Text("How many minutes beforehand you can log the previous time interval")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    Picker("Grace Period", selection: $loggingGracePeriod) {
-                        Text("15 minutes").tag(15)
-                        Text("30 minutes").tag(30)
-                        Text("45 minutes").tag(45)
-                        Text("1 hour").tag(60)
+                VStack(alignment: .leading, spacing: 16) {
+                    // Early Grace Period
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Early Grace Period")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                        Text("How many minutes beforehand you can log the current time interval")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        VStack(spacing: 12) {
+                            HStack {
+                                Text("\(loggingGracePeriod) minutes")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                            }
+                            
+                            Slider(
+                                value: Binding(
+                                    get: { Double(loggingGracePeriod) },
+                                    set: { loggingGracePeriod = Int($0) }
+                                ),
+                                in: 1...Double(reminderInterval / 60),
+                                step: 1
+                            )
+                            .accentColor(.blue)
+                            
+                            HStack {
+                                Text("1 min")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text("\(Int(reminderInterval / 60)) min")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
-                    .pickerStyle(.segmented)
                 }
             }
             .padding(20)
@@ -257,7 +289,7 @@ struct ProfileView: View {
         
         loggingGracePeriod = defaults.integer(forKey: "loggingGracePeriod")
         if loggingGracePeriod == 0 {
-            loggingGracePeriod = 15 // Default to 15 minutes
+            loggingGracePeriod = 5 // Default to 5 minutes
         }
     }
     

@@ -16,7 +16,7 @@ struct HomeView: View {
         let calendar = Calendar.current
         return entries.filter { entry in
             calendar.isDate(entry.timestamp, inSameDayAs: Date())
-        }.sorted { $0.timestamp > $1.timestamp } // Newest first
+        }.sorted { $0.timePeriodStart > $1.timePeriodStart } // Sort by when activity occurred, newest first
     }
     
     var body: some View {
@@ -65,6 +65,7 @@ struct HomeView: View {
         .sheet(isPresented: $showingEntriesList) {
             EntriesListView(entries: $entries)
         }
+
     }
     
     private var titleSection: some View {
@@ -80,21 +81,36 @@ struct HomeView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Image(systemName: intervalTimer.isLoggingWindow ? "checkmark.circle.fill" : "timer")
-                        .foregroundStyle(intervalTimer.isLoggingWindow ? .green : .orange)
+                    Image(systemName: intervalTimer.isLateGracePeriod ? "exclamationmark.triangle.fill" : (intervalTimer.isLoggingWindow ? "checkmark.circle.fill" : "timer"))
+                        .foregroundStyle(intervalTimer.isLateGracePeriod ? .red : (intervalTimer.isLoggingWindow ? .green : .orange))
                     
-                    Text(intervalTimer.isLoggingWindow ? "Logging Window Active" : "Next Check-in")
+                    Text(intervalTimer.isLateGracePeriod ? "Late Grace Period" : (intervalTimer.isLoggingWindow ? "Logging Window Active" : "Next Check-in"))
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.primary)
                 }
                 
-                if intervalTimer.isLoggingWindow {
+                if intervalTimer.isLateGracePeriod {
+                    Text("Log previous interval (5 min grace period)")
+                        .font(.subheadline)
+                        .foregroundStyle(.red)
+                } else if intervalTimer.isLoggingWindow {
                     Text("You can now log your activity")
                         .font(.subheadline)
                         .foregroundStyle(.green)
                 } else {
                     Text("\(intervalTimer.formatTimeRemaining()) until next interval")
                         .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                
+                // Show current time period
+                if intervalTimer.isLateGracePeriod {
+                    Text("Late grace period: \(intervalTimer.getIntervalString(for: intervalTimer.getPreviousIntervalStart(), endDate: intervalTimer.getPreviousIntervalEnd()))")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                } else {
+                    Text("Current period: \(intervalTimer.getIntervalString(for: intervalTimer.getCurrentIntervalStart(), endDate: intervalTimer.getCurrentIntervalEnd()))")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -111,7 +127,7 @@ struct HomeView: View {
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(intervalTimer.isLoggingWindow ? Color.green.opacity(0.1) : Color.orange.opacity(0.1))
+                .fill(intervalTimer.isLateGracePeriod ? Color.red.opacity(0.1) : (intervalTimer.isLoggingWindow ? Color.green.opacity(0.1) : Color.orange.opacity(0.1)))
         )
     }
     
@@ -142,6 +158,8 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+    
+
     
     private var entriesSection: some View {
         VStack(spacing: 0) {

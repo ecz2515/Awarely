@@ -2,6 +2,9 @@ import SwiftUI
 
 struct TimerOverlay: View {
     @ObservedObject var intervalTimer: IntervalTimer
+    @Binding var entries: [LogEntry]
+    @Binding var customTags: [String]
+    @State private var showingCatchUpFlow = false
     
     var body: some View {
         ZStack {
@@ -18,7 +21,7 @@ struct TimerOverlay: View {
                 
                 // Timer text
                 VStack(spacing: 8) {
-                    Text("Next check-in in")
+                    Text("Next check-in")
                         .font(.title2.weight(.medium))
                         .foregroundStyle(.primary)
                     
@@ -45,12 +48,37 @@ struct TimerOverlay: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
+                
+                // Catch-up button (only show if there are missed intervals)
+                if !intervalTimer.getMissedIntervals(for: entries).isEmpty {
+                    Button(action: { showingCatchUpFlow = true }) {
+                        HStack {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.subheadline)
+                                .foregroundStyle(.orange)
+                            
+                            Text("Catch up on \(intervalTimer.getMissedIntervals(for: entries).count) missed intervals")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.orange)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.orange.opacity(0.1))
+                        )
+                    }
+                    .padding(.top, 16)
+                }
             }
             .padding(40)
+            .sheet(isPresented: $showingCatchUpFlow) {
+                CatchUpView(entries: $entries, customTags: $customTags, missedIntervals: intervalTimer.getMissedIntervals(for: entries))
+            }
         }
     }
 }
 
 #Preview {
-    TimerOverlay(intervalTimer: IntervalTimer())
+    TimerOverlay(intervalTimer: IntervalTimer(), entries: .constant([]), customTags: .constant([]))
 }

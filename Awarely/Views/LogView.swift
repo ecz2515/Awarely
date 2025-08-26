@@ -14,12 +14,109 @@ struct LogView: View {
     @Binding var customTags: [String]
     @FocusState var isFieldFocused: Bool
     @State private var showingCustomTags = false
+    @State private var showingCatchUpFlow = false
     @ObservedObject var intervalTimer: IntervalTimer
+    @Binding var shouldNavigateToHome: Bool
+    @Environment(\.dismiss) private var dismiss
     
-    private var gracePeriodText: String {
-        let gracePeriod = UserDefaults.standard.integer(forKey: "loggingGracePeriod")
-        let gracePeriodMinutes = gracePeriod > 0 ? gracePeriod : 15
-        return "\(gracePeriodMinutes)"
+    private var reminderIntervalText: String {
+        // Get the reminder interval from UserDefaults or use default 30 minutes
+        let reminderInterval = UserDefaults.standard.double(forKey: "reminderInterval")
+        let reminderMinutes = reminderInterval > 0 ? Int(reminderInterval / 60) : 30
+        return "\(reminderMinutes)"
+    }
+    
+    private var isLoggingMissedInterval: Bool {
+        return intervalTimer.isLateGracePeriod
+    }
+    
+    private var isLoggingDisabled: Bool {
+        let currentInterval = getCurrentLoggingInterval()
+        
+        // Check if we already have an entry for this interval
+        let hasEntry = entries.contains { entry in
+            let entryStart = entry.timePeriodStart
+            let entryEnd = entry.timePeriodEnd
+            return abs(entryStart.timeIntervalSince(currentInterval.start)) < 60 && 
+                   abs(entryEnd.timeIntervalSince(currentInterval.end)) < 60
+        }
+        
+        return hasEntry
+    }
+    
+    private var shouldNavigateBack: Bool {
+        // Navigate back if user has already logged for the current interval and we're not in late grace period
+        if intervalTimer.isLateGracePeriod {
+            // In late grace period, allow logging for previous interval
+            return false
+        }
+        
+        // Check if we already have an entry for the current interval
+        let currentInterval = getCurrentLoggingInterval()
+        let hasEntry = entries.contains { entry in
+            let entryStart = entry.timePeriodStart
+            let entryEnd = entry.timePeriodEnd
+            return abs(entryStart.timeIntervalSince(currentInterval.start)) < 60 && 
+                   abs(entryEnd.timeIntervalSince(currentInterval.end)) < 60
+        }
+        
+        return hasEntry
+    }
+    
+    private func getCurrentLoggingInterval() -> (start: Date, end: Date, isLateGrace: Bool) {
+        let now = Date()
+        let calendar = Calendar.current
+        let reminderInterval = UserDefaults.standard.double(forKey: "reminderInterval")
+        let intervalMinutes = reminderInterval > 0 ? Int(reminderInterval / 60) : 30
+        let intervalDuration: TimeInterval = TimeInterval(intervalMinutes * 60)
+        
+        // Get grace periods from UserDefaults
+        let gracePeriodMinutes = UserDefaults.standard.integer(forKey: "loggingGracePeriod")
+        _ = gracePeriodMinutes > 0 ? gracePeriodMinutes : 5 // Default to 5 minutes
+        _ = 5
+        
+        // Calculate interval boundaries
+        let currentMinute = calendar.component(.minute, from: now)
+        let intervalStartMinute: Int
+        if currentMinute < intervalMinutes {
+            intervalStartMinute = 0
+        } else {
+            intervalStartMinute = intervalMinutes
+        }
+        
+        var components = calendar.dateComponents([.year, .month, .day, .hour], from: now)
+        components.minute = intervalStartMinute
+        components.second = 0
+        
+        let currentIntervalStart = calendar.date(from: components) ?? now
+        let currentIntervalEnd = currentIntervalStart.addingTimeInterval(intervalDuration)
+        let previousIntervalStart = currentIntervalStart.addingTimeInterval(-intervalDuration)
+        let previousIntervalEnd = currentIntervalStart
+        
+        // Use IntervalTimer's state to determine if we're in late grace period
+        if intervalTimer.isLateGracePeriod {
+            // Late grace: log for previous interval
+            return (start: previousIntervalStart, end: previousIntervalEnd, isLateGrace: true)
+        } else {
+            // Normal case: log for current interval
+            return (start: currentIntervalStart, end: currentIntervalEnd, isLateGrace: false)
+        }
+    }
+    
+    private func getMissedIntervals() -> [(start: Date, end: Date)] {
+        return intervalTimer.getMissedIntervals(for: entries)
+    }
+    
+    private func getLoggingWindowString() -> String {
+        let interval = getCurrentLoggingInterval()
+        let startTime = interval.start.formatted(date: .omitted, time: .shortened)
+        let endTime = interval.end.formatted(date: .omitted, time: .shortened)
+        
+        if interval.isLateGrace {
+            return "\(startTime) - \(endTime) (Late)"
+        } else {
+            return "\(startTime) - \(endTime)"
+        }
     }
     
     var body: some View {
@@ -42,6 +139,9 @@ struct LogView: View {
                         // Header
                         logHeader
                         
+                        // Catch-up Section
+                        catchUpSection
+                        
                         // Quick Tags Section
                         quickTagsSection
                         
@@ -61,9 +161,28 @@ struct LogView: View {
             .sheet(isPresented: $showingCustomTags) {
                 CustomTagsView(customTags: $customTags)
             }
+            .sheet(isPresented: $showingCatchUpFlow) {
+                CatchUpView(entries: $entries, customTags: $customTags, missedIntervals: getMissedIntervals())
+            }
             .overlay {
                 if !intervalTimer.isLoggingWindow {
-                    TimerOverlay(intervalTimer: intervalTimer)
+                    TimerOverlay(intervalTimer: intervalTimer, entries: $entries, customTags: $customTags)
+                }
+            }
+        }
+        .onAppear {
+            // Check if we should navigate back to timer
+            if shouldNavigateBack {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    shouldNavigateToHome = true
+                }
+            }
+        }
+        .onChange(of: shouldNavigateBack) { _, newValue in
+            if newValue {
+                // Navigate back to Home tab after a brief delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    shouldNavigateToHome = true
                 }
             }
         }
@@ -71,42 +190,90 @@ struct LogView: View {
     
     private var logHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("What did you do?")
-                        .font(.largeTitle.weight(.bold))
-                        .foregroundStyle(.primary)
-                    
-                    Text("Log your activity for the past 30 minutes")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    
-                    Text("Grace period: \(gracePeriodText) minutes before interval ends")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("What did you do?")
+                    .font(.largeTitle.weight(.bold))
+                    .foregroundStyle(.primary)
                 
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    Image(systemName: "timer")
-                        .font(.title2)
-                        .foregroundStyle(.orange)
-                        .opacity(0.7)
-                    
-                    if intervalTimer.isLoggingWindow {
-                        Text("Logging window")
-                            .font(.caption)
-                            .foregroundStyle(.green)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(.green.opacity(0.1), in: Capsule())
-                    }
-                }
+                Text("Log your activity for the past \(reminderIntervalText) minutes")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
+            
+            // Time period indicator
+            VStack(spacing: 8) {
+                HStack {
+                    Image(systemName: "clock")
+                        .font(.subheadline)
+                        .foregroundStyle(isLoggingMissedInterval ? .red : .blue)
+                    
+                    Text("Logging for: \(getLoggingWindowString())")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(isLoggingMissedInterval ? .red : .blue)
+                    
+                    Spacer()
+                }
+                
+                // Show message if already logged for current interval
+                if shouldNavigateBack {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(.green)
+                        
+                        Text("Already logged for this period - returning to timer")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.green)
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color.green.opacity(0.1))
+                    )
+                }
+                
+
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isLoggingMissedInterval ? Color.red.opacity(0.1) : Color.blue.opacity(0.1))
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, 24)
+    }
+    
+    private var catchUpSection: some View {
+        VStack(spacing: 0) {
+            if !getMissedIntervals().isEmpty {
+                Button(action: { showingCatchUpFlow = true }) {
+                    HStack {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.subheadline)
+                            .foregroundStyle(.orange)
+                        
+                        Text("Catch up on \(getMissedIntervals().count) missed intervals")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.orange)
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color.orange.opacity(0.1))
+                    )
+                }
+                .padding(.top, -8)
+                .padding(.bottom, 20)
+            }
+        }
     }
     
     private var quickTagsSection: some View {
@@ -184,6 +351,7 @@ struct LogView: View {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .strokeBorder(.quaternary, lineWidth: 0.5)
                     )
+                    .disabled(shouldNavigateBack)
             }
             
             Button(action: addEntry) {
@@ -197,18 +365,18 @@ struct LogView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
-                    (newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !intervalTimer.isLoggingWindow)
+                    (newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoggingDisabled || shouldNavigateBack)
                     ? .secondary 
                     : Color.blue,
                     in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                 )
             }
-            .disabled(newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !intervalTimer.isLoggingWindow)
-            .scaleEffect((newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !intervalTimer.isLoggingWindow) ? 0.98 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !intervalTimer.isLoggingWindow)
+            .disabled(newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoggingDisabled || shouldNavigateBack)
+            .scaleEffect((newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoggingDisabled || shouldNavigateBack) ? 0.98 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoggingDisabled || shouldNavigateBack)
             
-            if !intervalTimer.isLoggingWindow {
-                Text("Logging is only available during the grace period")
+            if isLoggingDisabled || shouldNavigateBack {
+                Text(shouldNavigateBack ? "Already logged for this time period - returning to timer" : "Already logged for this time period")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -236,16 +404,14 @@ struct LogView: View {
         let trimmed = newEntry.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         
-        // Check if we're within the logging grace period
-        if !intervalTimer.isLoggingWindow {
-            // Show an alert or message that logging is not allowed outside the grace period
-            return
-        }
+        let currentInterval = getCurrentLoggingInterval()
         
         let newLogEntry = LogEntry(
             text: trimmed,
             tags: [], // No longer using selectedTags since we're embedding tags in text
-            timestamp: Date()
+            timestamp: Date(),
+            timePeriodStart: currentInterval.start,
+            timePeriodEnd: currentInterval.end
         )
         
         withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
