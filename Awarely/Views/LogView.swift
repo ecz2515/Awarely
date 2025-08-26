@@ -167,7 +167,7 @@ struct LogView: View {
                 CustomTagsView(customTags: $customTags)
             }
             .sheet(isPresented: $showingCatchUpFlow) {
-                CatchUpView(entries: $entries, customTags: $customTags, missedIntervals: getMissedIntervals())
+                CatchUpView(entries: $entries, customTags: $customTags, missedIntervals: getMissedIntervals(), intervalTimer: intervalTimer)
             }
             .overlay {
                 if !intervalTimer.isLoggingWindow {
@@ -190,6 +190,12 @@ struct LogView: View {
                     shouldNavigateToHome = true
                 }
             }
+        }
+        .onChange(of: entries) { _, _ in
+            intervalTimer.updateTimerState(with: entries)
+        }
+        .onAppear {
+            intervalTimer.updateTimerState(with: entries)
         }
     }
     

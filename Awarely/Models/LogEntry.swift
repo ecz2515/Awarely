@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct LogEntry: Identifiable, Codable {
+struct LogEntry: Identifiable, Codable, Equatable {
     let id: UUID
     var text: String
     var tags: [String]

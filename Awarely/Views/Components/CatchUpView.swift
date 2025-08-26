@@ -14,161 +14,234 @@ struct CatchUpView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedIntervals: Set<Int> = []
     @State private var bulkText = ""
+    @State private var showingCompletion = false
+    @State private var completionScale: CGFloat = 0.8
+    @State private var completionOpacity: Double = 0
+    @ObservedObject var intervalTimer: IntervalTimer
+    
+    // Order missed intervals latest first
+    private var orderedMissedIntervals: [(start: Date, end: Date)] {
+        return missedIntervals.reversed()
+    }
+    
+    // Track which intervals have been completed
+    @State private var completedIntervals: Set<Int> = []
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Header
-                    VStack(spacing: 12) {
-                        Text("Catch Up on Missed Intervals")
-                            .font(.title2.weight(.bold))
-                            .foregroundStyle(.primary)
-                        
-                        Text("Select intervals to log your activities")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 24)
-                    
-                    // Missed intervals list
-                    LazyVStack(spacing: 0) {
-                        ForEach(Array(missedIntervals.enumerated()), id: \.offset) { index, interval in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("\(interval.start.formatted(date: .omitted, time: .shortened)) - \(interval.end.formatted(date: .omitted, time: .shortened))")
-                                        .font(.subheadline.weight(.medium))
-                                        .foregroundStyle(.primary)
-                                    
-                                    Text("\(Int(interval.end.timeIntervalSince(interval.start) / 60)) minutes")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
+            ZStack {
+                if !showingCompletion {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            // Header
+                            VStack(spacing: 12) {
+                                Text("Catch Up on Missed Intervals")
+                                    .font(.title2.weight(.bold))
+                                    .foregroundStyle(.primary)
                                 
-                                Spacer()
-                                
-                                if selectedIntervals.contains(index) {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(.blue)
-                                }
+                                Text("Select intervals to log your activities")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
                             }
                             .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(Color(.systemBackground))
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                if selectedIntervals.contains(index) {
-                                    selectedIntervals.remove(index)
-                                } else {
-                                    selectedIntervals.insert(index)
+                            .padding(.top, 20)
+                            .padding(.bottom, 24)
+                            
+                            // Missed intervals list
+                            LazyVStack(spacing: 0) {
+                                ForEach(Array(orderedMissedIntervals.enumerated()), id: \.offset) { index, interval in
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("\(interval.start.formatted(date: .omitted, time: .shortened)) - \(interval.end.formatted(date: .omitted, time: .shortened))")
+                                                .font(.subheadline.weight(.medium))
+                                                .foregroundStyle(.primary)
+                                            
+                                            Text("\(Int(interval.end.timeIntervalSince(interval.start) / 60)) minutes")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        if selectedIntervals.contains(index) {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundStyle(.blue)
+                                        } else if completedIntervals.contains(index) {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundStyle(.green)
+                                        }
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 12)
+                                    .background(Color(.systemBackground))
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        if !completedIntervals.contains(index) {
+                                            if selectedIntervals.contains(index) {
+                                                selectedIntervals.remove(index)
+                                            } else {
+                                                selectedIntervals.insert(index)
+                                            }
+                                        }
+                                    }
+                                    
+                                    if index < orderedMissedIntervals.count - 1 {
+                                        Divider()
+                                            .padding(.leading, 20)
+                                    }
                                 }
                             }
+                            .background(Color(.secondarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.horizontal, 20)
                             
-                            if index < missedIntervals.count - 1 {
-                                Divider()
-                                    .padding(.leading, 20)
-                            }
-                        }
-                    }
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal, 20)
-                    
-                    // Bulk action section at bottom
-                    if !selectedIntervals.isEmpty {
-                        VStack(spacing: 16) {
-                            // Quick Tags Section
-                            quickTagsSection
-                            
-                            TextField("What did you do during these intervals?", text: $bulkText, axis: .vertical)
-                                .textInputAutocapitalization(.sentences)
-                                .disableAutocorrection(false)
-                                .font(.body)
-                                .lineLimit(2...4)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 14)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .strokeBorder(.quaternary, lineWidth: 0.5)
-                                )
-                            
-                            HStack(spacing: 12) {
-                                Button("Log Selected") {
-                                    markSelectedAsCompleted()
+                            // Bulk action section at bottom
+                            if !selectedIntervals.isEmpty {
+                                VStack(spacing: 20) {
+                                    // Quick Tags Section
+                                    quickTagsSection
+                                    
+                                    TextField("What did you do during these intervals?", text: $bulkText, axis: .vertical)
+                                        .textInputAutocapitalization(.sentences)
+                                        .disableAutocorrection(false)
+                                        .font(.body)
+                                        .lineLimit(2...4)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 14)
+                                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                                .strokeBorder(.quaternary, lineWidth: 0.5)
+                                        )
+                                    
+                                    HStack(spacing: 12) {
+                                        Button("Log Selected") {
+                                            markSelectedAsCompleted()
+                                        }
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 16)
+                                        .background(
+                                            bulkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                            ? .secondary
+                                            : Color.blue,
+                                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        )
+                                        .disabled(bulkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                                        
+                                        Button("Skip") {
+                                            selectedIntervals.removeAll()
+                                            bulkText = ""
+                                        }
+                                        .foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 16)
+                                        .background(
+                                            Color(.systemGray5),
+                                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        )
+                                    }
                                 }
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 20)
                                 .background(
-                                    bulkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                    ? .secondary
-                                    : Color.blue,
-                                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                )
-                                .disabled(bulkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                                
-                                Button("Skip") {
-                                    selectedIntervals.removeAll()
-                                    bulkText = ""
-                                }
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(
-                                    Color(.systemGray5),
-                                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                )
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 20)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(.ultraThinMaterial)
-                                .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .strokeBorder(.quaternary, lineWidth: 0.5)
+                                        .fill(.ultraThinMaterial)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .strokeBorder(.quaternary, lineWidth: 0.5)
+                                        )
                                 )
-                        )
-                        .padding(.horizontal, 20)
-                        .padding(.top, 24)
-                        .padding(.bottom, 40)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 24)
+                                .padding(.bottom, 40)
+                            }
+                        }
                     }
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Cancel") {
+                                dismiss()
+                            }
+                        }
+                        
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") {
+                                dismiss()
+                            }
+                            .fontWeight(.semibold)
+                        }
                     }
                 }
                 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+                // Completion overlay
+                if showingCompletion {
+                    VStack(spacing: 24) {
+                        // Checkmark animation
+                        ZStack {
+                            Circle()
+                                .fill(.green.opacity(0.1))
+                                .frame(width: 120, height: 120)
+                            
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 60))
+                                .foregroundStyle(.green)
+                                .scaleEffect(completionScale)
+                                .animation(.spring(response: 0.6, dampingFraction: 0.6), value: completionScale)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            Text("All Caught Up!")
+                                .font(.title2.weight(.bold))
+                                .foregroundStyle(.primary)
+                            
+                            Text("Well done 🎉")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
                     }
-                    .fontWeight(.semibold)
+                    .padding(40)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .strokeBorder(.quaternary, lineWidth: 0.5)
+                            )
+                    )
+                    .frame(maxWidth: 300)
+                    .scaleEffect(completionScale)
+                    .opacity(completionOpacity)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.8), value: completionScale)
+                    .animation(.easeInOut(duration: 0.3), value: completionOpacity)
                 }
             }
+        }
+        .onChange(of: completedIntervals) { _, newValue in
+            // Check if all intervals are completed
+            if newValue.count == orderedMissedIntervals.count && !orderedMissedIntervals.isEmpty {
+                showCompletionAnimation()
+            }
+        }
+        .onChange(of: entries) { _, _ in
+            intervalTimer.updateTimerState(with: entries)
         }
     }
     
     private var quickTagsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             Text("Quick Tags")
-                .font(.subheadline.weight(.semibold))
+                .font(.headline.weight(.semibold))
                 .foregroundStyle(.primary)
             
             if customTags.isEmpty {
                 Text("No quick tags available")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 8)
             } else {
                 FlowLayout(spacing: 8) {
                     ForEach(customTags, id: \.self) { tag in
@@ -176,10 +249,10 @@ struct CatchUpView: View {
                             addTagToText(tag)
                         }) {
                             Text(tag)
-                                .font(.caption.weight(.medium))
+                                .font(.subheadline.weight(.medium))
                                 .foregroundStyle(.blue)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
                                 .background(Color.blue.opacity(0.1), in: Capsule())
                         }
                     }
@@ -206,8 +279,8 @@ struct CatchUpView: View {
         guard !text.isEmpty else { return }
         
         for index in selectedIntervals {
-            guard index < missedIntervals.count else { continue }
-            let interval = missedIntervals[index]
+            guard index < orderedMissedIntervals.count else { continue }
+            let interval = orderedMissedIntervals[index]
             
             let newEntry = LogEntry(
                 text: text,
@@ -218,10 +291,34 @@ struct CatchUpView: View {
             )
             
             entries.insert(newEntry, at: 0)
+            
+            // Mark this interval as completed
+            completedIntervals.insert(index)
         }
         
         selectedIntervals.removeAll()
         bulkText = ""
+    }
+    
+    private func showCompletionAnimation() {
+        showingCompletion = true
+        completionOpacity = 1
+        completionScale = 1.0
+        
+        // Auto-dismiss after animation
+        // Change this value to adjust how long the completion animation shows
+        let autoDismissDelay: TimeInterval = 2.0 // seconds
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + autoDismissDelay) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                completionOpacity = 0
+                completionScale = 0.8
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                dismiss()
+            }
+        }
     }
 }
 
@@ -231,5 +328,5 @@ struct CatchUpView: View {
         (start: Date().addingTimeInterval(-3300), end: Date().addingTimeInterval(-3000))
     ]
     
-    CatchUpView(entries: .constant([]), customTags: .constant(["Work", "Meeting", "Break"]), missedIntervals: sampleIntervals)
+    CatchUpView(entries: .constant([]), customTags: .constant(["Work", "Meeting", "Break"]), missedIntervals: sampleIntervals, intervalTimer: IntervalTimer())
 }

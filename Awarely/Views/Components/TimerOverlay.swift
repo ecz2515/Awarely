@@ -62,7 +62,7 @@ struct TimerOverlay: View {
             }
             .padding(40)
             .sheet(isPresented: $showingCatchUpFlow) {
-                CatchUpView(entries: $entries, customTags: $customTags, missedIntervals: intervalTimer.getMissedIntervals(for: entries))
+                CatchUpView(entries: $entries, customTags: $customTags, missedIntervals: intervalTimer.getMissedIntervals(for: entries), intervalTimer: intervalTimer)
             }
         }
     }

@@ -79,11 +79,56 @@ class IntervalTimer: ObservableObject {
         isLoggingWindow = isInEarlyGrace || isInLateGrace
         isLateGracePeriod = isInLateGrace
         
-
+        // If time is up, calculate next interval
+        if timeRemaining <= 0 {
+            calculateNextInterval()
+        }
+    }
+    
+    // MARK: - Entry-based State Updates
+    
+    func updateTimerState(with entries: [LogEntry]) {
+        let now = Date()
+        timeRemaining = nextIntervalDate.timeIntervalSince(now)
+        
+        // Get configured grace period from UserDefaults
+        let gracePeriodMinutes = UserDefaults.standard.integer(forKey: "loggingGracePeriod")
+        let gracePeriod = gracePeriodMinutes > 0 ? gracePeriodMinutes : 5 // Default to 5 minutes
+        let lateGracePeriod: TimeInterval = 5 * 60 // 5 minutes late grace period
+        
+        // Check if we're in early grace period (before interval ends)
+        let isInEarlyGrace = timeRemaining <= TimeInterval(gracePeriod * 60) && timeRemaining > 0
+        
+        // Check if we're in late grace period (after previous interval ends)
+        let previousIntervalEnd = getPreviousIntervalEnd()
+        let timeSincePreviousIntervalEnd = now.timeIntervalSince(previousIntervalEnd)
+        let isInLateGraceTime = timeSincePreviousIntervalEnd <= lateGracePeriod && timeSincePreviousIntervalEnd > 0
+        
+        // Check if there's already an entry for the previous interval
+        let hasPreviousIntervalEntry = hasEntryForPreviousInterval(entries: entries)
+        
+        // Only show late grace period if we're in the time window AND there's no entry for the previous interval
+        let isInLateGrace = isInLateGraceTime && !hasPreviousIntervalEntry
+        
+        // Update logging window state
+        isLoggingWindow = isInEarlyGrace || isInLateGrace
+        isLateGracePeriod = isInLateGrace
         
         // If time is up, calculate next interval
         if timeRemaining <= 0 {
             calculateNextInterval()
+        }
+    }
+    
+    private func hasEntryForPreviousInterval(entries: [LogEntry]) -> Bool {
+        let previousIntervalStart = getPreviousIntervalStart()
+        let previousIntervalEnd = getPreviousIntervalEnd()
+        
+        return entries.contains { entry in
+            let entryStart = entry.timePeriodStart
+            let entryEnd = entry.timePeriodEnd
+            return abs(entryStart.timeIntervalSince(previousIntervalStart)) < 60 && 
+                   abs(entryEnd.timeIntervalSince(previousIntervalEnd)) < 60
         }
     }
     
@@ -206,6 +251,8 @@ class IntervalTimer: ObservableObject {
         return missedIntervals
     }
     
+
+
     private func getCurrentLoggingInterval() -> (start: Date, end: Date, isLateGrace: Bool) {
         let now = Date()
         let calendar = Calendar.current

@@ -15,7 +15,7 @@ struct ContentView: View {
     @State private var customTags: [String] = ["Read a book", "Practice violin", "Work on startup", "Journal", "Practice German", "Exercise", "Practice conducting", "Take multivitamins", "Meditate", "Work", "Work meetings"]
     @FocusState private var isFieldFocused: Bool
     @State private var notificationEnabled = true
-    @State private var reminderInterval: TimeInterval = 30 * 60 // 30 minutes
+    @State private var reminderInterval: TimeInterval = 30 * 60 // Default to 30 minutes
     @StateObject private var intervalTimer = IntervalTimer()
     @State private var shouldNavigateToHome = false
     
@@ -58,6 +58,7 @@ struct ContentView: View {
         .accentColor(.blue)
         .onAppear {
             loadSampleData()
+            loadSettings()
             NotificationManager.shared.requestPermission()
         }
         .onChange(of: shouldNavigateToHome) { _, newValue in
@@ -66,6 +67,8 @@ struct ContentView: View {
                 shouldNavigateToHome = false
             }
         }
+        .onChange(of: notificationEnabled) { saveSettings() }
+        .onChange(of: reminderInterval) { saveSettings() }
     }
     
     private func loadSampleData() {
@@ -112,6 +115,25 @@ struct ContentView: View {
             
             entries = sampleEntries
         }
+    }
+    
+    // MARK: - Settings Management
+    
+    private func loadSettings() {
+        let defaults = UserDefaults.standard
+        
+        // Load notification settings
+        notificationEnabled = defaults.object(forKey: "notificationEnabled") as? Bool ?? true
+        reminderInterval = defaults.object(forKey: "reminderInterval") as? TimeInterval ?? 30 * 60
+        
+        // Save settings to ensure they're persisted
+        saveSettings()
+    }
+    
+    private func saveSettings() {
+        let defaults = UserDefaults.standard
+        defaults.set(notificationEnabled, forKey: "notificationEnabled")
+        defaults.set(reminderInterval, forKey: "reminderInterval")
     }
     
     // Helper function to get current interval start (copied from IntervalTimer logic)

@@ -13,10 +13,8 @@ struct ProfileView: View {
     @Binding var entries: [LogEntry]
     @ObservedObject var intervalTimer: IntervalTimer
     
-    // New notification timing settings
-    @State private var notificationStartTime = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
-    @State private var notificationEndTime = Calendar.current.date(from: DateComponents(hour: 18, minute: 0)) ?? Date()
-    @State private var loggingGracePeriod: Int = 5 // minutes
+    // Premium feature state
+    @State private var isPremiumUser = false
     
     var body: some View {
         NavigationStack {
@@ -41,13 +39,17 @@ struct ProfileView: View {
                         // Notifications Section
                         notificationsSection
                         
-                        // Notification Timing Section
-                        if notificationEnabled {
-                            notificationTimingSection
-                        }
-                        
                         // Logging Settings Section
                         loggingSettingsSection
+                        
+                        // Export & Sharing Section
+                        exportSharingSection
+                        
+                        // Personalization Section
+                        personalizationSection
+                        
+                        // Smart Features Section
+                        smartFeaturesSection
                         
                         Spacer(minLength: 40)
                     }
@@ -60,14 +62,12 @@ struct ProfileView: View {
         .onAppear {
             loadSettings()
         }
-        .onChange(of: notificationStartTime) { saveSettings() }
-        .onChange(of: notificationEndTime) { saveSettings() }
-        .onChange(of: loggingGracePeriod) { saveSettings() }
         .onChange(of: reminderInterval) { 
             // Ensure grace period doesn't exceed reminder interval
             let maxGracePeriod = Int(reminderInterval / 60)
-            if loggingGracePeriod > maxGracePeriod {
-                loggingGracePeriod = maxGracePeriod
+            let currentGracePeriod = UserDefaults.standard.integer(forKey: "loggingGracePeriod")
+            if currentGracePeriod > maxGracePeriod {
+                UserDefaults.standard.set(maxGracePeriod, forKey: "loggingGracePeriod")
             }
             saveSettings()
         }
@@ -119,12 +119,13 @@ struct ProfileView: View {
                 .foregroundStyle(.primary)
             
             VStack(spacing: 16) {
+                // Push Notifications Toggle
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Reminder Notifications")
+                        Text("Push notifications")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(.primary)
-                        Text("Get reminded to log your activities")
+                        Text("Reminders to log your activities")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -135,71 +136,63 @@ struct ProfileView: View {
                         .tint(.blue)
                 }
                 
+                // Reminder Interval
                 if notificationEnabled {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Reminder Interval")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
-                        
-                        Picker("Interval", selection: $reminderInterval) {
-                            Text("15 min").tag(TimeInterval(15 * 60))
-                            Text("30 min").tag(TimeInterval(30 * 60))
-                            Text("45 min").tag(TimeInterval(45 * 60))
-                            Text("1 hour").tag(TimeInterval(60 * 60))
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text("Reminder interval")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                
+                                if !isPremiumUser {
+                                    Image(systemName: "crown.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+                            Text("How often to send reminders")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
-                        .pickerStyle(.segmented)
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 8) {
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text(formatInterval(reminderInterval))
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                
+                                if reminderInterval != 30 * 60 && !isPremiumUser {
+                                    Text("Premium")
+                                        .font(.caption2)
+                                        .foregroundStyle(.orange)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .fill(.orange.opacity(0.2))
+                                        )
+                                }
+                            }
+                            
+                            // Chevron indicator to show it's tappable
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .opacity(0.7)
+                        }
                     }
-                }
-            }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(.quaternary, lineWidth: 0.5)
-                    )
-            )
-        }
-    }
-    
-    private var notificationTimingSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Notification Timing")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.primary)
-            
-            Text("Set when you want to receive logging reminders")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            
-            VStack(spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Start Time")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
-                        Text("When to start sending notifications")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if isPremiumUser {
+                            showIntervalPicker()
+                        } else {
+                            // Show premium upgrade prompt for non-30-minute intervals
+                            showPremiumUpgrade()
+                        }
                     }
-                    Spacer()
-                    DatePicker("Start Time", selection: $notificationStartTime, displayedComponents: .hourAndMinute)
-                        .labelsHidden()
-                }
-                
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("End Time")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
-                        Text("When to stop sending notifications")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    DatePicker("End Time", selection: $notificationEndTime, displayedComponents: .hourAndMinute)
-                        .labelsHidden()
                 }
             }
             .padding(20)
@@ -231,9 +224,12 @@ struct ProfileView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         
+                        let gracePeriod = UserDefaults.standard.integer(forKey: "loggingGracePeriod")
+                        let maxGracePeriod = Int(reminderInterval / 60)
+                        
                         VStack(spacing: 12) {
                             HStack {
-                                Text("\(loggingGracePeriod) minutes")
+                                Text("\(gracePeriod) minutes")
                                     .font(.subheadline.weight(.medium))
                                     .foregroundStyle(.primary)
                                 Spacer()
@@ -241,10 +237,12 @@ struct ProfileView: View {
                             
                             Slider(
                                 value: Binding(
-                                    get: { Double(loggingGracePeriod) },
-                                    set: { loggingGracePeriod = Int($0) }
+                                    get: { Double(gracePeriod) },
+                                    set: { 
+                                        UserDefaults.standard.set(Int($0), forKey: "loggingGracePeriod")
+                                    }
                                 ),
-                                in: 1...Double(reminderInterval / 60),
+                                in: 1...Double(maxGracePeriod),
                                 step: 1
                             )
                             .accentColor(.blue)
@@ -254,7 +252,7 @@ struct ProfileView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 Spacer()
-                                Text("\(Int(reminderInterval / 60)) min")
+                                Text("\(maxGracePeriod) min")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -274,29 +272,295 @@ struct ProfileView: View {
         }
     }
     
+    private var exportSharingSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Export & Sharing")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+            
+            VStack(spacing: 16) {
+                // Export to Calendar
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text("Export to Calendar")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        Text("Automatically add your logged activities to your calendar")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .opacity(0.7)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    showComingSoonAlert("Export to Calendar")
+                }
+                
+                // Share Report
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text("Share Report")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        Text("Generate and share detailed time tracking reports")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .opacity(0.7)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    showComingSoonAlert("Share Report")
+                }
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(.quaternary, lineWidth: 0.5)
+                    )
+            )
+        }
+    }
+    
+    private var personalizationSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Personalization")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+            
+            VStack(spacing: 16) {
+                // Customize Theme
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text("Customize Theme")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        Text("Personalize the app with custom colors and themes")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .opacity(0.7)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    showComingSoonAlert("Customize Theme")
+                }
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(.quaternary, lineWidth: 0.5)
+                    )
+            )
+        }
+    }
+    
+    private var smartFeaturesSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Smart Features")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+            
+            VStack(spacing: 16) {
+                // AI Summaries
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text("AI Summaries")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        Text("Get intelligent summaries of your daily activities")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .opacity(0.7)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    showComingSoonAlert("AI Summaries")
+                }
+                
+                // Smart Notifications
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text("Smart Notifications")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        Text("Automatically pause reminders during calendar events")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .opacity(0.7)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    showComingSoonAlert("Smart Notifications")
+                }
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(.quaternary, lineWidth: 0.5)
+                    )
+            )
+        }
+    }
+    
+    // MARK: - Helper Functions
+    
+    private func formatInterval(_ interval: TimeInterval) -> String {
+        let minutes = Int(interval / 60)
+        if minutes == 30 {
+            return "30 min"
+        } else if minutes == 60 {
+            return "1 hour"
+        } else {
+            return "\(minutes) min"
+        }
+    }
+    
+    private func showIntervalPicker() {
+        // For now, just show an alert with options
+        // In a real app, you'd show a proper picker sheet
+        let alert = UIAlertController(title: "Reminder Interval", message: "Choose how often to send reminders", preferredStyle: .actionSheet)
+        
+        let intervals = [
+            (15 * 60, "15 min"),
+            (30 * 60, "30 min"),
+            (45 * 60, "45 min"),
+            (60 * 60, "1 hour")
+        ]
+        
+        for (interval, label) in intervals {
+            alert.addAction(UIAlertAction(title: label, style: .default) { _ in
+                reminderInterval = TimeInterval(interval)
+            })
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(alert, animated: true)
+        }
+    }
+    
+    private func showPremiumUpgrade() {
+        let alert = UIAlertController(
+            title: "Premium Feature",
+            message: "Custom reminder intervals will be available in the premium version. Coming soon!",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(alert, animated: true)
+        }
+    }
+    
+    private func showComingSoonAlert(_ featureName: String) {
+        let alert = UIAlertController(
+            title: "Coming Soon",
+            message: "\(featureName) will be available in the premium version!",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(alert, animated: true)
+        }
+    }
+    
     // MARK: - Settings Persistence
     
     private func loadSettings() {
         let defaults = UserDefaults.standard
         
-        if let startTime = defaults.object(forKey: "notificationStartTime") as? Date {
-            notificationStartTime = startTime
+        // Load grace period
+        let gracePeriod = defaults.integer(forKey: "loggingGracePeriod")
+        if gracePeriod == 0 {
+            defaults.set(5, forKey: "loggingGracePeriod") // Default to 5 minutes
         }
         
-        if let endTime = defaults.object(forKey: "notificationEndTime") as? Date {
-            notificationEndTime = endTime
-        }
-        
-        loggingGracePeriod = defaults.integer(forKey: "loggingGracePeriod")
-        if loggingGracePeriod == 0 {
-            loggingGracePeriod = 5 // Default to 5 minutes
+        // Ensure reminder interval defaults to 30 minutes if not set
+        if reminderInterval == 0 {
+            reminderInterval = 30 * 60
         }
     }
     
     private func saveSettings() {
-        let defaults = UserDefaults.standard
-        defaults.set(notificationStartTime, forKey: "notificationStartTime")
-        defaults.set(notificationEndTime, forKey: "notificationEndTime")
-        defaults.set(loggingGracePeriod, forKey: "loggingGracePeriod")
+        // Settings are saved automatically through bindings and UserDefaults
     }
 }

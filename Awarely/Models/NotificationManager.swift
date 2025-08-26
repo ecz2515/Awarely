@@ -17,31 +17,6 @@ class NotificationManager: ObservableObject {
     }
     
     func scheduleLoggingReminder(at date: Date) {
-        // Check if the notification time is within the allowed window
-        let defaults = UserDefaults.standard
-        let startTime = defaults.object(forKey: "notificationStartTime") as? Date ?? Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
-        let endTime = defaults.object(forKey: "notificationEndTime") as? Date ?? Calendar.current.date(from: DateComponents(hour: 18, minute: 0)) ?? Date()
-        
-        let calendar = Calendar.current
-        let notificationHour = calendar.component(.hour, from: date)
-        let notificationMinute = calendar.component(.minute, from: date)
-        
-        let startHour = calendar.component(.hour, from: startTime)
-        let startMinute = calendar.component(.minute, from: startTime)
-        let endHour = calendar.component(.hour, from: endTime)
-        let endMinute = calendar.component(.minute, from: endTime)
-        
-        // Convert to minutes for easier comparison
-        let notificationTimeInMinutes = notificationHour * 60 + notificationMinute
-        let startTimeInMinutes = startHour * 60 + startMinute
-        let endTimeInMinutes = endHour * 60 + endMinute
-        
-        // Check if notification time is within the allowed window
-        if notificationTimeInMinutes < startTimeInMinutes || notificationTimeInMinutes > endTimeInMinutes {
-            print("Notification time \(notificationHour):\(notificationMinute) is outside allowed window (\(startHour):\(startMinute) - \(endHour):\(endMinute))")
-            return
-        }
-        
         let content = UNMutableNotificationContent()
         content.title = "Time to Log Your Activity"
         content.body = "Take a moment to reflect on what you've been working on for the past 30 minutes."

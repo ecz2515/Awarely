@@ -12,6 +12,11 @@ struct HomeView: View {
     @State private var showingEntriesList = false
     @ObservedObject var intervalTimer: IntervalTimer
     
+    // Update timer state when entries change
+    private func updateTimerState() {
+        intervalTimer.updateTimerState(with: entries)
+    }
+    
     var todayEntries: [LogEntry] {
         let calendar = Calendar.current
         return entries.filter { entry in
@@ -65,6 +70,12 @@ struct HomeView: View {
         .sheet(isPresented: $showingEntriesList) {
             EntriesListView(entries: $entries)
         }
+        .onChange(of: entries) { _, _ in
+            updateTimerState()
+        }
+        .onAppear {
+            updateTimerState()
+        }
 
     }
     
@@ -114,10 +125,10 @@ struct HomeView: View {
             )
             
             StatCard(
-                title: "This Week",
-                value: "\(weeklyEntries)",
-                icon: "calendar",
-                color: .green
+                title: "Day Streak",
+                value: "\(currentStreak)",
+                icon: "flame.fill",
+                color: .orange
             )
         }
     }
@@ -203,11 +214,34 @@ struct HomeView: View {
         }
     }
     
-    private var weeklyEntries: Int {
+    private var currentStreak: Int {
         let calendar = Calendar.current
-        let weekAgo = calendar.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        return entries.filter { entry in
-            entry.timestamp >= weekAgo
-        }.count
+        var streak = 0
+        var currentDate = Date()
+        
+        // Check if today has entries
+        let todayEntries = entries.filter { entry in
+            calendar.isDate(entry.timestamp, inSameDayAs: currentDate)
+        }
+        
+        if !todayEntries.isEmpty {
+            streak = 1
+        }
+        
+        // Check previous days
+        for dayOffset in 1...365 { // Check up to a year back
+            let previousDate = calendar.date(byAdding: .day, value: -dayOffset, to: Date()) ?? Date()
+            let dayEntries = entries.filter { entry in
+                calendar.isDate(entry.timestamp, inSameDayAs: previousDate)
+            }
+            
+            if !dayEntries.isEmpty {
+                streak += 1
+            } else {
+                break // Streak broken
+            }
+        }
+        
+        return streak
     }
 }
