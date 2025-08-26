@@ -11,6 +11,7 @@ struct EntriesListView: View {
     @Binding var entries: [LogEntry]
     @Environment(\.dismiss) private var dismiss
     @State private var selectedDate = Date()
+    @State private var currentWeekOffset = 0
     
     var selectedDateEntries: [LogEntry] {
         let calendar = Calendar.current
@@ -23,9 +24,10 @@ struct EntriesListView: View {
         let calendar = Calendar.current
         let today = Date()
         let weekStart = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+        let adjustedWeekStart = calendar.date(byAdding: .weekOfYear, value: currentWeekOffset, to: weekStart) ?? weekStart
         
         return (0..<7).compactMap { dayOffset in
-            calendar.date(byAdding: .day, value: dayOffset, to: weekStart)
+            calendar.date(byAdding: .day, value: dayOffset, to: adjustedWeekStart)
         }
     }
     
@@ -84,6 +86,31 @@ struct EntriesListView: View {
                     .font(.headline.weight(.medium))
                 }
             }
+            .gesture(
+                DragGesture()
+                    .onEnded { value in
+                        let threshold: CGFloat = 50
+                        if value.translation.width > threshold {
+                            // Swipe right - go to previous week
+                            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                                currentWeekOffset -= 1
+                                // Keep selected date in sync with current week
+                                if !weekDates.contains(selectedDate) {
+                                    selectedDate = weekDates[3] // Middle of the week
+                                }
+                            }
+                        } else if value.translation.width < -threshold {
+                            // Swipe left - go to next week
+                            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                                currentWeekOffset += 1
+                                // Keep selected date in sync with current week
+                                if !weekDates.contains(selectedDate) {
+                                    selectedDate = weekDates[3] // Middle of the week
+                                }
+                            }
+                        }
+                    }
+            )
         }
     }
     
@@ -94,9 +121,57 @@ struct EntriesListView: View {
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.primary)
                 Spacer()
+                
+                // Today button
+                Button(action: {
+                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                        currentWeekOffset = 0
+                        selectedDate = Date()
+                    }
+                }) {
+                    Text("Today")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.blue)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.1), in: Capsule())
+                }
+                
+                // Week navigation buttons
+                HStack(spacing: 12) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                            currentWeekOffset -= 1
+                            if !weekDates.contains(selectedDate) {
+                                selectedDate = weekDates[3]
+                            }
+                        }
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.blue)
+                            .frame(width: 32, height: 32)
+                            .background(Color.blue.opacity(0.1), in: Circle())
+                    }
+                    
+                    Button(action: {
+                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                            currentWeekOffset += 1
+                            if !weekDates.contains(selectedDate) {
+                                selectedDate = weekDates[3]
+                            }
+                        }
+                    }) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.blue)
+                            .frame(width: 32, height: 32)
+                            .background(Color.blue.opacity(0.1), in: Circle())
+                    }
+                }
             }
             
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 ForEach(weekDates, id: \.self) { date in
                     DayButton(
                         date: date,
@@ -151,29 +226,47 @@ struct DayButton: View {
     
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 Text(date.formatted(.dateTime.weekday(.abbreviated)))
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(isSelected ? .white : .secondary)
                 
                 Text(date.formatted(.dateTime.day()))
-                    .font(.title3.weight(.semibold))
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(isSelected ? .white : .primary)
                 
-                if entryCount > 0 {
-                    Text("\(entryCount)")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(isSelected ? .white : .blue)
-                } else {
-                    Text("0")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(isSelected ? .white.opacity(0.6) : .secondary)
+                // Entry count with better visual treatment
+                VStack(spacing: 2) {
+                    if entryCount > 0 {
+                        Text("\(entryCount)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(isSelected ? .white : .blue)
+                        
+                        // Small indicator dots for multiple entries
+                        if entryCount > 1 {
+                            HStack(spacing: 2) {
+                                ForEach(0..<min(entryCount, 3), id: \.self) { _ in
+                                    Circle()
+                                        .fill(isSelected ? .white : .blue)
+                                        .frame(width: 3, height: 3)
+                                }
+                            }
+                        }
+                    } else {
+                        Text("0")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(isSelected ? .white.opacity(0.6) : .secondary)
+                    }
                 }
             }
-            .frame(width: 44, height: 60)
+            .frame(width: 44, height: 80)
             .background(
                 isSelected ? Color.blue : Color(.systemGray6),
                 in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(isSelected ? .clear : Color(.systemGray4), lineWidth: 0.5)
             )
         }
     }
