@@ -90,20 +90,23 @@ struct HomeView: View {
     }
     
     private var timerStatusSection: some View {
-        HStack {
+        let hasCurrentEntry = intervalTimer.hasEntryForCurrentInterval(entries: entries)
+        let shouldShowTimer = !intervalTimer.isLoggingWindow || (intervalTimer.isLoggingWindow && hasCurrentEntry)
+        
+        return HStack {
             HStack {
-                Image(systemName: intervalTimer.isLateGracePeriod ? "exclamationmark.triangle.fill" : (intervalTimer.isLoggingWindow ? "checkmark.circle.fill" : "timer"))
-                    .foregroundStyle(intervalTimer.isLateGracePeriod ? .red : (intervalTimer.isLoggingWindow ? .green : .orange))
+                Image(systemName: intervalTimer.isLateGracePeriod ? "exclamationmark.triangle.fill" : (shouldShowTimer ? "timer" : "checkmark.circle.fill"))
+                    .foregroundStyle(intervalTimer.isLateGracePeriod ? .red : (shouldShowTimer ? .orange : .green))
                 
-                Text(intervalTimer.isLateGracePeriod ? "Log your previous activity now" : (intervalTimer.isLoggingWindow ? "Ready to log your activity" : "\(intervalTimer.formatTimeRemaining()) until next check-in"))
+                Text(intervalTimer.isLateGracePeriod ? "Log your previous activity now" : (shouldShowTimer ? "\(intervalTimer.hasEntryForCurrentInterval(entries: entries) ? intervalTimer.formatTimeUntilNextIntervalEnd() : intervalTimer.formatTimeRemaining()) until next check-in" : "Ready to log your activity"))
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.primary)
             }
             
             Spacer()
             
-            if !intervalTimer.isLoggingWindow {
-                Text(intervalTimer.nextIntervalDate.formatted(date: .omitted, time: .shortened))
+            if shouldShowTimer {
+                Text((intervalTimer.hasEntryForCurrentInterval(entries: entries) ? intervalTimer.nextIntervalEndDate : intervalTimer.getCurrentIntervalEnd()).formatted(date: .omitted, time: .shortened))
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.orange)
             }
@@ -112,7 +115,7 @@ struct HomeView: View {
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(intervalTimer.isLateGracePeriod ? Color.red.opacity(0.1) : (intervalTimer.isLoggingWindow ? Color.green.opacity(0.1) : Color.orange.opacity(0.1)))
+                .fill(intervalTimer.isLateGracePeriod ? Color.red.opacity(0.1) : (shouldShowTimer ? Color.orange.opacity(0.1) : Color.green.opacity(0.1)))
         )
     }
     
@@ -218,7 +221,7 @@ struct HomeView: View {
     private var currentStreak: Int {
         let calendar = Calendar.current
         var streak = 0
-        var currentDate = Date()
+        let currentDate = Date()
         
         // Check if today has entries
         let todayEntries = entries.filter { entry in

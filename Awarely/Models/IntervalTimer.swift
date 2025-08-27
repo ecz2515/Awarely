@@ -122,6 +122,18 @@ class IntervalTimer: ObservableObject {
         }
     }
     
+    func hasEntryForCurrentInterval(entries: [LogEntry]) -> Bool {
+        let currentIntervalStart = getCurrentIntervalStart()
+        let currentIntervalEnd = getCurrentIntervalEnd()
+        
+        return entries.contains { entry in
+            let entryStart = entry.timePeriodStart
+            let entryEnd = entry.timePeriodEnd
+            return abs(entryStart.timeIntervalSince(currentIntervalStart)) < 60 && 
+                   abs(entryEnd.timeIntervalSince(currentIntervalEnd)) < 60
+        }
+    }
+    
     func formatTimeRemaining() -> String {
         let minutes = Int(timeRemaining) / 60
         let seconds = Int(timeRemaining) % 60

@@ -15,6 +15,7 @@ struct LogView: View {
     @FocusState var isFieldFocused: Bool
     @State private var showingCustomTags = false
     @State private var showingCatchUpFlow = false
+    @State private var showingSuccessAnimation = false
     @ObservedObject var intervalTimer: IntervalTimer
     @Binding var shouldNavigateToHome: Bool
     @Environment(\.dismiss) private var dismiss
@@ -157,13 +158,23 @@ struct LogView: View {
                 CatchUpView(entries: $entries, customTags: $customTags, missedIntervals: getMissedIntervals(), intervalTimer: intervalTimer)
             }
             .overlay {
-                if !intervalTimer.isLoggingWindow || isLoggingDisabled {
-                    TimerOverlay(
-                        intervalTimer: intervalTimer, 
-                        entries: $entries, 
-                        customTags: $customTags,
-                        showTimeUntilNextIntervalEnd: isLoggingDisabled
-                    )
+                if showingSuccessAnimation || (!intervalTimer.isLoggingWindow || isLoggingDisabled) {
+                    // Glass-morphism background that's always present
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .ignoresSafeArea()
+                        .overlay {
+                            if showingSuccessAnimation {
+                                successAnimationContent
+                            } else if !intervalTimer.isLoggingWindow || isLoggingDisabled {
+                                TimerOverlay(
+                                    intervalTimer: intervalTimer, 
+                                    entries: $entries, 
+                                    customTags: $customTags,
+                                    showTimeUntilNextIntervalEnd: isLoggingDisabled
+                                )
+                            }
+                        }
                 }
             }
         }
@@ -403,6 +414,53 @@ struct LogView: View {
         
         newEntry = ""
         isFieldFocused = true
+        
+        // Show success animation
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showingSuccessAnimation = true
+        }
+        
+        // Hide success animation after 1.5 seconds and show TimerOverlay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showingSuccessAnimation = false
+            }
+        }
+    }
+    
+    private var successAnimationContent: some View {
+        VStack(spacing: 24) {
+            // Success checkmark with animation
+            ZStack {
+                Circle()
+                    .fill(.green)
+                    .frame(width: 80, height: 80)
+                    .scaleEffect(showingSuccessAnimation ? 1.0 : 0.5)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.6).delay(0.1), value: showingSuccessAnimation)
+                
+                Image(systemName: "checkmark")
+                    .font(.system(size: 40, weight: .bold))
+                    .foregroundStyle(.white)
+                    .scaleEffect(showingSuccessAnimation ? 1.0 : 0.0)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.6).delay(0.3), value: showingSuccessAnimation)
+            }
+            
+            // Success text
+            VStack(spacing: 8) {
+                Text("Activity Logged!")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.primary)
+                    .opacity(showingSuccessAnimation ? 1.0 : 0.0)
+                    .animation(.easeInOut(duration: 0.4).delay(0.4), value: showingSuccessAnimation)
+                
+                Text("Your activity has been recorded")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .opacity(showingSuccessAnimation ? 1.0 : 0.0)
+                    .animation(.easeInOut(duration: 0.4).delay(0.5), value: showingSuccessAnimation)
+            }
+        }
+        .padding(40)
     }
 }
 
