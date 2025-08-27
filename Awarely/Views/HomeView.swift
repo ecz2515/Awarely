@@ -9,6 +9,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Binding var entries: [LogEntry]
+    @Binding var customTags: [String]
     @State private var showingEntriesList = false
     @ObservedObject var intervalTimer: IntervalTimer
     
@@ -68,7 +69,7 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $showingEntriesList) {
-            EntriesListView(entries: $entries)
+            EntriesListView(entries: $entries, customTags: $customTags)
         }
         .onChange(of: entries) { _, _ in
             updateTimerState()
@@ -152,7 +153,7 @@ struct HomeView: View {
             } else {
                 LazyVStack(spacing: 12) {
                     ForEach(todayEntries) { entry in
-                        EnhancedEntryRow(entry: entry) { updated in
+                        EnhancedEntryRow(entry: entry, customTags: customTags) { updated in
                             if let idx = entries.firstIndex(where: { $0.id == updated.id }) {
                                 entries[idx] = updated
                             }

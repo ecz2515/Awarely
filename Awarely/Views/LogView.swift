@@ -51,21 +51,8 @@ struct LogView: View {
     }
     
     private var shouldNavigateBack: Bool {
-        // In late grace period, never navigate back - allow logging
-        if intervalTimer.isLateGracePeriod {
-            return false
-        }
-        
-        // Check if we already have an entry for the current interval
-        let currentInterval = getCurrentLoggingInterval()
-        let hasEntry = entries.contains { entry in
-            let entryStart = entry.timePeriodStart
-            let entryEnd = entry.timePeriodEnd
-            return abs(entryStart.timeIntervalSince(currentInterval.start)) < 60 && 
-                   abs(entryEnd.timeIntervalSince(currentInterval.end)) < 60
-        }
-        
-        return hasEntry
+        // Never navigate back - let TimerOverlay handle the display
+        return false
     }
     
     private func getCurrentLoggingInterval() -> (start: Date, end: Date, isLateGrace: Bool) {
@@ -170,27 +157,17 @@ struct LogView: View {
                 CatchUpView(entries: $entries, customTags: $customTags, missedIntervals: getMissedIntervals(), intervalTimer: intervalTimer)
             }
             .overlay {
-                if !intervalTimer.isLoggingWindow {
-                    TimerOverlay(intervalTimer: intervalTimer, entries: $entries, customTags: $customTags)
+                if !intervalTimer.isLoggingWindow || isLoggingDisabled {
+                    TimerOverlay(
+                        intervalTimer: intervalTimer, 
+                        entries: $entries, 
+                        customTags: $customTags,
+                        showTimeUntilNextIntervalEnd: isLoggingDisabled
+                    )
                 }
             }
         }
-        .onAppear {
-            // Check if we should navigate back to timer
-            if shouldNavigateBack {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    shouldNavigateToHome = true
-                }
-            }
-        }
-        .onChange(of: shouldNavigateBack) { _, newValue in
-            if newValue {
-                // Navigate back to Home tab after a brief delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    shouldNavigateToHome = true
-                }
-            }
-        }
+
         .onChange(of: entries) { _, _ in
             intervalTimer.updateTimerState(with: entries)
         }
@@ -225,26 +202,7 @@ struct LogView: View {
                     Spacer()
                 }
                 
-                // Show message if already logged for current interval
-                if shouldNavigateBack {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.subheadline)
-                            .foregroundStyle(.green)
-                        
-                        Text("Already logged for this period - returning to timer")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.green)
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Color.green.opacity(0.1))
-                    )
-                }
+
                 
 
             }
@@ -305,13 +263,27 @@ struct LogView: View {
                         Button(action: {
                             addTagToText(tag)
                         }) {
-                            Text(tag)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(.blue)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color.blue.opacity(0.1), in: Capsule())
+                            HStack(spacing: 6) {
+                                Image(systemName: "plus")
+                                    .font(.caption2)
+                                    .foregroundStyle(.blue)
+                                
+                                Text(tag)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.blue)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color.blue.opacity(0.1))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                            .strokeBorder(Color.blue.opacity(0.3), lineWidth: 1)
+                                    )
+                            )
                         }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -362,7 +334,7 @@ struct LogView: View {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .strokeBorder(.quaternary, lineWidth: 0.5)
                     )
-                    .disabled(shouldNavigateBack)
+
             }
             
             Button(action: addEntry) {
@@ -376,18 +348,18 @@ struct LogView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
-                    (newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoggingDisabled || shouldNavigateBack)
+                    (newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoggingDisabled)
                     ? .secondary 
                     : Color.blue,
                     in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                 )
             }
-            .disabled(newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoggingDisabled || shouldNavigateBack)
-            .scaleEffect((newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoggingDisabled || shouldNavigateBack) ? 0.98 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoggingDisabled || shouldNavigateBack)
+            .disabled(newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoggingDisabled)
+            .scaleEffect((newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoggingDisabled) ? 0.98 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: newEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoggingDisabled)
             
-            if isLoggingDisabled || shouldNavigateBack {
-                Text(shouldNavigateBack ? "Already logged for this time period - returning to timer" : "Already logged for this time period")
+            if isLoggingDisabled {
+                Text("Already logged for this time period")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

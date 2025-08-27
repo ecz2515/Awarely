@@ -248,13 +248,27 @@ struct CatchUpView: View {
                         Button(action: {
                             addTagToText(tag)
                         }) {
-                            Text(tag)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(.blue)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color.blue.opacity(0.1), in: Capsule())
+                            HStack(spacing: 6) {
+                                Image(systemName: "plus")
+                                    .font(.caption2)
+                                    .foregroundStyle(.blue)
+                                
+                                Text(tag)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.blue)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color.blue.opacity(0.1))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                            .strokeBorder(Color.blue.opacity(0.3), lineWidth: 1)
+                                    )
+                            )
                         }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

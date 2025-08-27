@@ -17,6 +17,12 @@ class NotificationManager: ObservableObject {
     }
     
     func scheduleLoggingReminder(at date: Date) {
+        // Check if the notification is within the allowed time window
+        if !isWithinNotificationTimeWindow(date) {
+            print("Notification not scheduled for \(date) - outside notification time window")
+            return
+        }
+        
         let content = UNMutableNotificationContent()
         content.title = "Time to Log Your Activity"
         content.body = "Take a moment to reflect on what you've been working on for the past 30 minutes."
@@ -73,5 +79,47 @@ class NotificationManager: ObservableObject {
         let defaults = UserDefaults.standard
         let gracePeriod = defaults.integer(forKey: "loggingGracePeriod")
         return gracePeriod > 0 ? gracePeriod : 5 // Default to 5 minutes
+    }
+    
+    // MARK: - Notification Time Window
+    
+    private func isWithinNotificationTimeWindow(_ date: Date) -> Bool {
+        let defaults = UserDefaults.standard
+        let calendar = Calendar.current
+        
+        // Get notification start time
+        let notificationStartTime: Date
+        if let savedStartTime = defaults.object(forKey: "notificationStartTime") as? Date {
+            // Use the saved start time, but if it's from a previous day, use today's start time
+            let today = calendar.startOfDay(for: date)
+            let savedStartComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+            notificationStartTime = calendar.date(bySettingHour: savedStartComponents.hour ?? 9, 
+                                                minute: savedStartComponents.minute ?? 0, 
+                                                second: 0, 
+                                                of: today) ?? date
+        } else {
+            // Default to 9 AM today
+            let today = calendar.startOfDay(for: date)
+            notificationStartTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? date
+        }
+        
+        // Get notification end time
+        let notificationEndTime: Date
+        if let savedEndTime = defaults.object(forKey: "notificationEndTime") as? Date {
+            // Use the saved end time, but if it's from a previous day, use today's end time
+            let today = calendar.startOfDay(for: date)
+            let savedEndComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
+            notificationEndTime = calendar.date(bySettingHour: savedEndComponents.hour ?? 18, 
+                                              minute: savedEndComponents.minute ?? 0, 
+                                              second: 0, 
+                                              of: today) ?? date
+        } else {
+            // Default to 6 PM today
+            let today = calendar.startOfDay(for: date)
+            notificationEndTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? date
+        }
+        
+        // Check if the date is within the notification time window
+        return date >= notificationStartTime && date <= notificationEndTime
     }
 }

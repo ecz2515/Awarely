@@ -21,7 +21,7 @@ struct ContentView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            HomeView(entries: $entries, intervalTimer: intervalTimer)
+            HomeView(entries: $entries, customTags: $customTags, intervalTimer: intervalTimer)
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text("Home")
@@ -60,6 +60,7 @@ struct ContentView: View {
             loadSampleData()
             loadSettings()
             NotificationManager.shared.requestPermission()
+            intervalTimer.setEntries(entries)
         }
         .onChange(of: shouldNavigateToHome) { _, newValue in
             if newValue {
@@ -69,6 +70,9 @@ struct ContentView: View {
         }
         .onChange(of: notificationEnabled) { saveSettings() }
         .onChange(of: reminderInterval) { saveSettings() }
+        .onChange(of: entries) { _, _ in
+            intervalTimer.setEntries(entries)
+        }
     }
     
     private func loadSampleData() {

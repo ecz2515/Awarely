@@ -6,9 +6,11 @@ class IntervalTimer: ObservableObject {
     @Published var isLoggingWindow: Bool = false
     @Published var isLateGracePeriod: Bool = false
     @Published var nextIntervalDate: Date = Date()
+    @Published var nextIntervalEndDate: Date = Date()
     
     private var timer: Timer?
     private let interval: TimeInterval = 30 * 60 // 30 minutes
+    private var entries: [LogEntry] = []
     
     init() {
         calculateNextInterval()
@@ -17,6 +19,13 @@ class IntervalTimer: ObservableObject {
     
     deinit {
         timer?.invalidate()
+    }
+    
+    // MARK: - Entries Management
+    
+    func setEntries(_ entries: [LogEntry]) {
+        self.entries = entries
+        updateTimerState()
     }
     
     private func calculateNextInterval() {
@@ -47,47 +56,21 @@ class IntervalTimer: ObservableObject {
         components.second = 0
         
         nextIntervalDate = calendar.date(from: components) ?? now
+        nextIntervalEndDate = nextIntervalDate.addingTimeInterval(interval)
         
-        // Schedule notification for the next interval
-        NotificationManager.shared.scheduleLoggingReminder(at: nextIntervalDate)
+        // Only schedule notification if it's within the notification time window
+        if isWithinNotificationTimeWindow(nextIntervalDate) {
+            NotificationManager.shared.scheduleLoggingReminder(at: nextIntervalDate)
+        }
     }
     
     private func startTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.updateTimer()
+            self?.updateTimerState()
         }
     }
     
-    private func updateTimer() {
-        let now = Date()
-        timeRemaining = nextIntervalDate.timeIntervalSince(now)
-        
-        // Get configured grace period from UserDefaults
-        let gracePeriodMinutes = UserDefaults.standard.integer(forKey: "loggingGracePeriod")
-        let gracePeriod = gracePeriodMinutes > 0 ? gracePeriodMinutes : 5 // Default to 5 minutes
-        let lateGracePeriod: TimeInterval = 5 * 60 // 5 minutes late grace period
-        
-        // Check if we're in early grace period (before interval ends)
-        let isInEarlyGrace = timeRemaining <= TimeInterval(gracePeriod * 60) && timeRemaining > 0
-        
-        // Check if we're in late grace period (after previous interval ends)
-        let previousIntervalEnd = getPreviousIntervalEnd()
-        let timeSincePreviousIntervalEnd = now.timeIntervalSince(previousIntervalEnd)
-        let isInLateGrace = timeSincePreviousIntervalEnd <= lateGracePeriod && timeSincePreviousIntervalEnd > 0
-        
-        // Update logging window state
-        isLoggingWindow = isInEarlyGrace || isInLateGrace
-        isLateGracePeriod = isInLateGrace
-        
-        // If time is up, calculate next interval
-        if timeRemaining <= 0 {
-            calculateNextInterval()
-        }
-    }
-    
-    // MARK: - Entry-based State Updates
-    
-    func updateTimerState(with entries: [LogEntry]) {
+    private func updateTimerState() {
         let now = Date()
         timeRemaining = nextIntervalDate.timeIntervalSince(now)
         
@@ -120,6 +103,13 @@ class IntervalTimer: ObservableObject {
         }
     }
     
+    // MARK: - Entry-based State Updates (Legacy method for backward compatibility)
+    
+    func updateTimerState(with entries: [LogEntry]) {
+        self.entries = entries
+        updateTimerState()
+    }
+    
     private func hasEntryForPreviousInterval(entries: [LogEntry]) -> Bool {
         let previousIntervalStart = getPreviousIntervalStart()
         let previousIntervalEnd = getPreviousIntervalEnd()
@@ -138,8 +128,19 @@ class IntervalTimer: ObservableObject {
         return String(format: "%02d:%02d", minutes, seconds)
     }
     
+    func formatTimeUntilNextIntervalEnd() -> String {
+        let timeUntilEnd = getTimeUntilNextIntervalEnd()
+        let minutes = Int(timeUntilEnd) / 60
+        let seconds = Int(timeUntilEnd) % 60
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+    
     func getTimeUntilNextInterval() -> TimeInterval {
         return timeRemaining
+    }
+    
+    func getTimeUntilNextIntervalEnd() -> TimeInterval {
+        return nextIntervalEndDate.timeIntervalSince(Date())
     }
     
     func isInLoggingWindow() -> Bool {
@@ -191,6 +192,48 @@ class IntervalTimer: ObservableObject {
         return "\(startTime) - \(endTime)"
     }
     
+    // MARK: - Notification Time Window
+    
+    private func isWithinNotificationTimeWindow(_ date: Date) -> Bool {
+        let defaults = UserDefaults.standard
+        let calendar = Calendar.current
+        
+        // Get notification start time
+        let notificationStartTime: Date
+        if let savedStartTime = defaults.object(forKey: "notificationStartTime") as? Date {
+            // Use the saved start time, but if it's from a previous day, use today's start time
+            let today = calendar.startOfDay(for: date)
+            let savedStartComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+            notificationStartTime = calendar.date(bySettingHour: savedStartComponents.hour ?? 9, 
+                                                minute: savedStartComponents.minute ?? 0, 
+                                                second: 0, 
+                                                of: today) ?? date
+        } else {
+            // Default to 9 AM today
+            let today = calendar.startOfDay(for: date)
+            notificationStartTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? date
+        }
+        
+        // Get notification end time
+        let notificationEndTime: Date
+        if let savedEndTime = defaults.object(forKey: "notificationEndTime") as? Date {
+            // Use the saved end time, but if it's from a previous day, use today's end time
+            let today = calendar.startOfDay(for: date)
+            let savedEndComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
+            notificationEndTime = calendar.date(bySettingHour: savedEndComponents.hour ?? 18, 
+                                              minute: savedEndComponents.minute ?? 0, 
+                                              second: 0, 
+                                              of: today) ?? date
+        } else {
+            // Default to 6 PM today
+            let today = calendar.startOfDay(for: date)
+            notificationEndTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? date
+        }
+        
+        // Check if the date is within the notification time window
+        return date >= notificationStartTime && date <= notificationEndTime
+    }
+    
     // MARK: - Missed Intervals Utility
     
     func getMissedIntervals(for entries: [LogEntry]) -> [(start: Date, end: Date)] {
@@ -202,10 +245,10 @@ class IntervalTimer: ObservableObject {
         
         // Get notification start time from UserDefaults, default to 9 AM today if not set
         let defaults = UserDefaults.standard
+        let calendar = Calendar.current
         let notificationStartTime: Date
         if let savedStartTime = defaults.object(forKey: "notificationStartTime") as? Date {
             // Use the saved start time, but if it's from a previous day, use today's start time
-            let calendar = Calendar.current
             let today = calendar.startOfDay(for: now)
             let savedStartComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
             notificationStartTime = calendar.date(bySettingHour: savedStartComponents.hour ?? 9, 
@@ -214,17 +257,33 @@ class IntervalTimer: ObservableObject {
                                                 of: today) ?? now
         } else {
             // Default to 9 AM today
-            let calendar = Calendar.current
             let today = calendar.startOfDay(for: now)
             notificationStartTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? now
         }
         
         var missedIntervals: [(start: Date, end: Date)] = []
         
-        // Start from the notification start time and check each interval until now
-        var currentIntervalStart = notificationStartTime
+        // Get notification end time
+        let notificationEndTime: Date
+        if let savedEndTime = defaults.object(forKey: "notificationEndTime") as? Date {
+            // Use the saved end time, but if it's from a previous day, use today's end time
+            let today = calendar.startOfDay(for: now)
+            let savedEndComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
+            notificationEndTime = calendar.date(bySettingHour: savedEndComponents.hour ?? 18, 
+                                              minute: savedEndComponents.minute ?? 0, 
+                                              second: 0, 
+                                              of: today) ?? now
+        } else {
+            // Default to 6 PM today
+            let today = calendar.startOfDay(for: now)
+            notificationEndTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? now
+        }
         
-        while currentIntervalStart < now {
+        // Start from the notification start time and check each interval until the end time or now (whichever is earlier)
+        var currentIntervalStart = notificationStartTime
+        let endTime = min(notificationEndTime, now)
+        
+        while currentIntervalStart < endTime {
             let intervalEnd = currentIntervalStart.addingTimeInterval(intervalDuration)
             
             // Skip if this interval is in the future

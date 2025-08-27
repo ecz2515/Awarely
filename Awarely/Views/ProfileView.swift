@@ -15,6 +15,7 @@ struct ProfileView: View {
     
     // Premium feature state
     @State private var isPremiumUser = false
+    @State private var gracePeriod: Int = 5
     
     var body: some View {
         NavigationStack {
@@ -193,6 +194,64 @@ struct ProfileView: View {
                             showPremiumUpgrade()
                         }
                     }
+                    
+                    // Notification Start Time
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Start time")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            Text("When to start sending reminders")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 8) {
+                            Text(formatNotificationTime(getNotificationStartTime()))
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .opacity(0.7)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        showStartTimePicker()
+                    }
+                    
+                    // Notification End Time
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("End time")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            Text("When to stop sending reminders")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 8) {
+                            Text(formatNotificationTime(getNotificationEndTime()))
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .opacity(0.7)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        showEndTimePicker()
+                    }
                 }
             }
             .padding(20)
@@ -224,7 +283,6 @@ struct ProfileView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         
-                        let gracePeriod = UserDefaults.standard.integer(forKey: "loggingGracePeriod")
                         let maxGracePeriod = Int(reminderInterval / 60)
                         
                         VStack(spacing: 12) {
@@ -239,6 +297,7 @@ struct ProfileView: View {
                                 value: Binding(
                                     get: { Double(gracePeriod) },
                                     set: { 
+                                        gracePeriod = Int($0)
                                         UserDefaults.standard.set(Int($0), forKey: "loggingGracePeriod")
                                     }
                                 ),
@@ -487,6 +546,40 @@ struct ProfileView: View {
         }
     }
     
+    private func formatNotificationTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+    
+    private func getNotificationStartTime() -> Date {
+        let defaults = UserDefaults.standard
+        if let savedTime = defaults.object(forKey: "notificationStartTime") as? Date {
+            return savedTime
+        } else {
+            // Default to 9 AM
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let defaultTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? Date()
+            defaults.set(defaultTime, forKey: "notificationStartTime")
+            return defaultTime
+        }
+    }
+    
+    private func getNotificationEndTime() -> Date {
+        let defaults = UserDefaults.standard
+        if let savedTime = defaults.object(forKey: "notificationEndTime") as? Date {
+            return savedTime
+        } else {
+            // Default to 6 PM
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let defaultTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? Date()
+            defaults.set(defaultTime, forKey: "notificationEndTime")
+            return defaultTime
+        }
+    }
+    
     private func showIntervalPicker() {
         // For now, just show an alert with options
         // In a real app, you'd show a proper picker sheet
@@ -528,6 +621,66 @@ struct ProfileView: View {
         }
     }
     
+    private func showStartTimePicker() {
+        let alert = UIAlertController(title: "Start Time", message: "Choose when to start sending reminders", preferredStyle: .actionSheet)
+        
+        let times = [
+            (6, "6:00 AM"),
+            (7, "7:00 AM"),
+            (8, "8:00 AM"),
+            (9, "9:00 AM"),
+            (10, "10:00 AM"),
+            (11, "11:00 AM"),
+            (12, "12:00 PM")
+        ]
+        
+        for (hour, label) in times {
+            alert.addAction(UIAlertAction(title: label, style: .default) { _ in
+                let calendar = Calendar.current
+                let today = calendar.startOfDay(for: Date())
+                let newTime = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: today) ?? Date()
+                UserDefaults.standard.set(newTime, forKey: "notificationStartTime")
+            })
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(alert, animated: true)
+        }
+    }
+    
+    private func showEndTimePicker() {
+        let alert = UIAlertController(title: "End Time", message: "Choose when to stop sending reminders", preferredStyle: .actionSheet)
+        
+        let times = [
+            (17, "5:00 PM"),
+            (18, "6:00 PM"),
+            (19, "7:00 PM"),
+            (20, "8:00 PM"),
+            (21, "9:00 PM"),
+            (22, "10:00 PM"),
+            (23, "11:00 PM")
+        ]
+        
+        for (hour, label) in times {
+            alert.addAction(UIAlertAction(title: label, style: .default) { _ in
+                let calendar = Calendar.current
+                let today = calendar.startOfDay(for: Date())
+                let newTime = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: today) ?? Date()
+                UserDefaults.standard.set(newTime, forKey: "notificationEndTime")
+            })
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(alert, animated: true)
+        }
+    }
+    
     private func showComingSoonAlert(_ featureName: String) {
         let alert = UIAlertController(
             title: "Coming Soon",
@@ -549,9 +702,12 @@ struct ProfileView: View {
         let defaults = UserDefaults.standard
         
         // Load grace period
-        let gracePeriod = defaults.integer(forKey: "loggingGracePeriod")
-        if gracePeriod == 0 {
+        let savedGracePeriod = defaults.integer(forKey: "loggingGracePeriod")
+        if savedGracePeriod == 0 {
             defaults.set(5, forKey: "loggingGracePeriod") // Default to 5 minutes
+            gracePeriod = 5
+        } else {
+            gracePeriod = savedGracePeriod
         }
         
         // Ensure reminder interval defaults to 30 minutes if not set

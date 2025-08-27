@@ -5,6 +5,7 @@ struct TimerOverlay: View {
     @Binding var entries: [LogEntry]
     @Binding var customTags: [String]
     @State private var showingCatchUpFlow = false
+    var showTimeUntilNextIntervalEnd: Bool = false
     
     var body: some View {
         ZStack {
@@ -21,7 +22,7 @@ struct TimerOverlay: View {
                 
                 // Timer text
                 VStack(spacing: 8) {
-                    Text(intervalTimer.formatTimeRemaining())
+                    Text(showTimeUntilNextIntervalEnd ? intervalTimer.formatTimeUntilNextIntervalEnd() : intervalTimer.formatTimeRemaining())
                         .font(.system(size: 48, weight: .bold, design: .monospaced))
                         .foregroundStyle(.orange)
                         .contentTransition(.numericText())

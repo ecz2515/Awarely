@@ -9,6 +9,7 @@ import SwiftUI
 
 struct EntriesListView: View {
     @Binding var entries: [LogEntry]
+    @Binding var customTags: [String]
     @Environment(\.dismiss) private var dismiss
     @State private var selectedDate = Date()
     @State private var currentWeekOffset = 0
@@ -17,7 +18,7 @@ struct EntriesListView: View {
         let calendar = Calendar.current
         return entries.filter { entry in
             calendar.isDate(entry.timestamp, inSameDayAs: selectedDate)
-        }.sorted { $0.timestamp > $1.timestamp }
+        }.sorted { $0.timePeriodStart > $1.timePeriodStart } // Sort by when activity occurred, newest first
     }
     
     var weekDates: [Date] {
@@ -58,7 +59,7 @@ struct EntriesListView: View {
                             } else {
                                 LazyVStack(spacing: 12) {
                                     ForEach(selectedDateEntries) { entry in
-                                        EnhancedEntryRow(entry: entry) { updated in
+                                        EnhancedEntryRow(entry: entry, customTags: customTags) { updated in
                                             if let idx = entries.firstIndex(where: { $0.id == updated.id }) {
                                                 entries[idx] = updated
                                             }
