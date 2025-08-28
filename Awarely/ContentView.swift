@@ -18,8 +18,28 @@ struct ContentView: View {
     @State private var reminderInterval: TimeInterval = 30 * 60 // Default to 30 minutes
     @StateObject private var intervalTimer = IntervalTimer()
     @State private var shouldNavigateToHome = false
+    @State private var showOnboarding = false
+    
+    @EnvironmentObject var coreDataManager: CoreDataManager
     
     var body: some View {
+        Group {
+            if showOnboarding {
+                OnboardingView()
+                    .onReceive(NotificationCenter.default.publisher(for: .profileCreated)) { _ in
+                        showOnboarding = false
+                        loadDataFromCoreData()
+                    }
+            } else {
+                mainAppView
+            }
+        }
+        .onAppear {
+            checkFirstLaunch()
+        }
+    }
+    
+    private var mainAppView: some View {
         TabView(selection: $selectedTab) {
             HomeView(entries: $entries, customTags: $customTags, intervalTimer: intervalTimer)
                 .tabItem {
@@ -57,8 +77,7 @@ struct ContentView: View {
         }
         .accentColor(.blue)
         .onAppear {
-            loadSampleData()
-            loadSettings()
+            loadDataFromCoreData()
             NotificationManager.shared.requestPermission()
             intervalTimer.setEntries(entries)
         }
@@ -68,18 +87,78 @@ struct ContentView: View {
                 shouldNavigateToHome = false
             }
         }
-        .onChange(of: notificationEnabled) { saveSettings() }
-        .onChange(of: reminderInterval) { saveSettings() }
+        .onChange(of: notificationEnabled) { 
+            saveSettingsToCoreData()
+        }
+        .onChange(of: reminderInterval) { 
+            saveSettingsToCoreData()
+        }
         .onChange(of: entries) { _, _ in
             intervalTimer.setEntries(entries)
+            saveEntriesToCoreData()
+        }
+        .onChange(of: customTags) { _, _ in
+            saveCustomTagsToCoreData()
         }
     }
+    
+    // MARK: - First Launch Check
+    
+    private func checkFirstLaunch() {
+        if let userProfile = coreDataManager.getUserProfile() {
+            // User profile exists, load data
+            showOnboarding = false
+            loadDataFromCoreData()
+        } else {
+            // First launch, show onboarding
+            showOnboarding = true
+        }
+    }
+    
+    // MARK: - Core Data Operations
+    
+    private func loadDataFromCoreData() {
+        // Load entries from Core Data
+        let loadedEntries = coreDataManager.fetchAllLogEntries()
+        entries = loadedEntries
+        
+        // Load user profile settings
+        if let userProfile = coreDataManager.getUserProfile() {
+            notificationEnabled = userProfile.notificationEnabled
+            reminderInterval = userProfile.reminderInterval
+            customTags = userProfile.customTags ?? ["Read a book", "Practice violin", "Work on startup", "Journal", "Practice German", "Exercise", "Practice conducting", "Take multivitamins", "Meditate", "Work", "Work meetings"]
+        }
+        
+        // Only load sample data if this is the first launch (no user profile exists)
+        if entries.isEmpty && coreDataManager.getUserProfile() == nil {
+            loadSampleData()
+        }
+    }
+    
+    private func saveEntriesToCoreData() {
+        // This method is called when entries change
+        // We don't need to save all entries here since individual entries are saved when created/updated
+        // This is just a placeholder for future functionality if needed
+    }
+    
+    private func saveSettingsToCoreData() {
+        let userProfile = coreDataManager.fetchOrCreateUserProfile()
+        userProfile.notificationEnabled = notificationEnabled
+        userProfile.reminderInterval = reminderInterval
+        coreDataManager.saveUserProfile()
+    }
+    
+    private func saveCustomTagsToCoreData() {
+        coreDataManager.updateCustomTags(customTags)
+    }
+    
+    // MARK: - Sample Data (for backward compatibility)
     
     private func loadSampleData() {
         // Add some sample entries for demonstration
         if entries.isEmpty {
-            _ = Calendar.current
-            _ = Date()
+            let calendar = Calendar.current
+            let date = Date()
             
             // Get the previous intervals using the interval timer logic
             let currentIntervalStart = getCurrentIntervalStart()
@@ -118,26 +197,14 @@ struct ContentView: View {
             ]
             
             entries = sampleEntries
+            
+            // Save sample entries to Core Data (only if no entries exist)
+            if coreDataManager.fetchAllLogEntries().isEmpty {
+                for entry in sampleEntries {
+                    coreDataManager.addLogEntry(entry)
+                }
+            }
         }
-    }
-    
-    // MARK: - Settings Management
-    
-    private func loadSettings() {
-        let defaults = UserDefaults.standard
-        
-        // Load notification settings
-        notificationEnabled = defaults.object(forKey: "notificationEnabled") as? Bool ?? true
-        reminderInterval = defaults.object(forKey: "reminderInterval") as? TimeInterval ?? 30 * 60
-        
-        // Save settings to ensure they're persisted
-        saveSettings()
-    }
-    
-    private func saveSettings() {
-        let defaults = UserDefaults.standard
-        defaults.set(notificationEnabled, forKey: "notificationEnabled")
-        defaults.set(reminderInterval, forKey: "reminderInterval")
     }
     
     // Helper function to get current interval start (copied from IntervalTimer logic)
@@ -165,6 +232,13 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Notification Extension
+
+extension Notification.Name {
+    static let profileCreated = Notification.Name("profileCreated")
+}
+
 #Preview {
     ContentView()
+        .environmentObject(CoreDataManager.shared)
 }

@@ -16,6 +16,7 @@ struct ProfileView: View {
     // Premium feature state
     @State private var isPremiumUser = false
     @State private var gracePeriod: Int = 5
+    @EnvironmentObject var coreDataManager: CoreDataManager
     
     var body: some View {
         NavigationStack {
@@ -52,6 +53,9 @@ struct ProfileView: View {
                         // Smart Features Section
                         smartFeaturesSection
                         
+                        // Debug Section (for testing notifications)
+                        debugSection
+                        
                         Spacer(minLength: 40)
                     }
                     .padding(.horizontal, 20)
@@ -61,16 +65,15 @@ struct ProfileView: View {
             }
         }
         .onAppear {
-            loadSettings()
+            loadSettingsFromCoreData()
         }
         .onChange(of: reminderInterval) { 
             // Ensure grace period doesn't exceed reminder interval
             let maxGracePeriod = Int(reminderInterval / 60)
-            let currentGracePeriod = UserDefaults.standard.integer(forKey: "loggingGracePeriod")
-            if currentGracePeriod > maxGracePeriod {
-                UserDefaults.standard.set(maxGracePeriod, forKey: "loggingGracePeriod")
+            if gracePeriod > maxGracePeriod {
+                gracePeriod = maxGracePeriod
             }
-            saveSettings()
+            saveSettingsToCoreData()
         }
     }
     
@@ -298,7 +301,7 @@ struct ProfileView: View {
                                     get: { Double(gracePeriod) },
                                     set: { 
                                         gracePeriod = Int($0)
-                                        UserDefaults.standard.set(Int($0), forKey: "loggingGracePeriod")
+                                        saveSettingsToCoreData()
                                     }
                                 ),
                                 in: 1...Double(maxGracePeriod),
@@ -533,6 +536,86 @@ struct ProfileView: View {
         }
     }
     
+    private var debugSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Debug")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+            
+            VStack(spacing: 12) {
+                Button("Test Notification") {
+                    let content = UNMutableNotificationContent()
+                    content.title = "Time to Log!"
+                    content.body = "Don't forget to log your activities for today."
+                    content.sound = .default
+                    
+                    let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+                    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+                    
+                    UNUserNotificationCenter.current().add(request) { error in
+                        if let error = error {
+                            print("Error scheduling notification: \(error.localizedDescription)")
+                        } else {
+                            print("Notification scheduled successfully!")
+                        }
+                    }
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, 15)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(.blue.opacity(0.2))
+                )
+                .foregroundStyle(.blue)
+                
+                Button("Clear All Notifications") {
+                    UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+                    print("All pending notifications cleared.")
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, 15)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(.red.opacity(0.2))
+                )
+                .foregroundStyle(.red)
+                
+                Button("Check Notification Status") {
+                    NotificationManager.shared.checkNotificationStatus()
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, 15)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(.green.opacity(0.2))
+                )
+                .foregroundStyle(.green)
+                
+                Button("Schedule Next Interval") {
+                    let nextInterval = intervalTimer.nextIntervalDate
+                    NotificationManager.shared.scheduleLoggingReminder(at: nextInterval)
+                    print("Manually scheduled notification for next interval: \(nextInterval)")
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, 15)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(.orange.opacity(0.2))
+                )
+                .foregroundStyle(.orange)
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(.quaternary, lineWidth: 0.5)
+                )
+        )
+    }
+    
     // MARK: - Helper Functions
     
     private func formatInterval(_ interval: TimeInterval) -> String {
@@ -553,29 +636,33 @@ struct ProfileView: View {
     }
     
     private func getNotificationStartTime() -> Date {
-        let defaults = UserDefaults.standard
-        if let savedTime = defaults.object(forKey: "notificationStartTime") as? Date {
+        if let userProfile = coreDataManager.getUserProfile(),
+           let savedTime = userProfile.notificationStartTime {
             return savedTime
         } else {
             // Default to 9 AM
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: Date())
             let defaultTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? Date()
-            defaults.set(defaultTime, forKey: "notificationStartTime")
+            let userProfile = coreDataManager.fetchOrCreateUserProfile()
+            userProfile.notificationStartTime = defaultTime
+            coreDataManager.saveUserProfile()
             return defaultTime
         }
     }
     
     private func getNotificationEndTime() -> Date {
-        let defaults = UserDefaults.standard
-        if let savedTime = defaults.object(forKey: "notificationEndTime") as? Date {
+        if let userProfile = coreDataManager.getUserProfile(),
+           let savedTime = userProfile.notificationEndTime {
             return savedTime
         } else {
             // Default to 6 PM
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: Date())
             let defaultTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? Date()
-            defaults.set(defaultTime, forKey: "notificationEndTime")
+            let userProfile = coreDataManager.fetchOrCreateUserProfile()
+            userProfile.notificationEndTime = defaultTime
+            coreDataManager.saveUserProfile()
             return defaultTime
         }
     }
@@ -639,7 +726,9 @@ struct ProfileView: View {
                 let calendar = Calendar.current
                 let today = calendar.startOfDay(for: Date())
                 let newTime = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: today) ?? Date()
-                UserDefaults.standard.set(newTime, forKey: "notificationStartTime")
+                let userProfile = self.coreDataManager.fetchOrCreateUserProfile()
+                userProfile.notificationStartTime = newTime
+                self.coreDataManager.saveUserProfile()
             })
         }
         
@@ -669,7 +758,9 @@ struct ProfileView: View {
                 let calendar = Calendar.current
                 let today = calendar.startOfDay(for: Date())
                 let newTime = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: today) ?? Date()
-                UserDefaults.standard.set(newTime, forKey: "notificationEndTime")
+                let userProfile = self.coreDataManager.fetchOrCreateUserProfile()
+                userProfile.notificationEndTime = newTime
+                self.coreDataManager.saveUserProfile()
             })
         }
         
@@ -698,16 +789,12 @@ struct ProfileView: View {
     
     // MARK: - Settings Persistence
     
-    private func loadSettings() {
-        let defaults = UserDefaults.standard
-        
-        // Load grace period
-        let savedGracePeriod = defaults.integer(forKey: "loggingGracePeriod")
-        if savedGracePeriod == 0 {
-            defaults.set(5, forKey: "loggingGracePeriod") // Default to 5 minutes
-            gracePeriod = 5
+    private func loadSettingsFromCoreData() {
+        if let userProfile = coreDataManager.getUserProfile() {
+            gracePeriod = Int(userProfile.loggingGracePeriod)
+            isPremiumUser = userProfile.isPremiumUser
         } else {
-            gracePeriod = savedGracePeriod
+            gracePeriod = 5 // Default to 5 minutes
         }
         
         // Ensure reminder interval defaults to 30 minutes if not set
@@ -716,7 +803,9 @@ struct ProfileView: View {
         }
     }
     
-    private func saveSettings() {
-        // Settings are saved automatically through bindings and UserDefaults
+    private func saveSettingsToCoreData() {
+        let userProfile = coreDataManager.fetchOrCreateUserProfile()
+        userProfile.loggingGracePeriod = Int32(gracePeriod)
+        coreDataManager.saveUserProfile()
     }
 }

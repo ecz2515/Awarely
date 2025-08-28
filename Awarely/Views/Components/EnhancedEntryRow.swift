@@ -11,6 +11,7 @@ struct EnhancedEntryRow: View {
     let entry: LogEntry
     let customTags: [String]
     var onEdit: ((LogEntry) -> Void)? = nil
+    var onDelete: ((UUID) -> Void)? = nil
     @State private var isPressed = false
     @State private var isEditing = false
     @State private var draftText: String = ""
@@ -24,15 +25,29 @@ struct EnhancedEntryRow: View {
                     .foregroundStyle(.blue)
                 
                 Spacer()
-                Button {
-                    draftText = entry.text
-                    isEditing = true
-                } label: {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(6)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                HStack(spacing: 8) {
+                    if onDelete != nil {
+                        Button {
+                            onDelete?(entry.id)
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.red)
+                                .padding(6)
+                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        }
+                    }
+                    
+                    Button {
+                        draftText = entry.text
+                        isEditing = true
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(6)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
                 }
             }
             
@@ -174,30 +189,12 @@ struct EnhancedEntryRow: View {
             
             FlowLayout(spacing: 8) {
                 ForEach(customTags, id: \.self) { tag in
-                    Button(action: {
-                        addTagToText(tag)
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "plus")
-                                .font(.caption2)
-                                .foregroundStyle(.blue)
-                            
-                            Text(tag)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(.blue)
+                    TagButtonWithFeedback(
+                        title: tag,
+                        action: {
+                            addTagToText(tag)
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(Color.blue.opacity(0.1))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .strokeBorder(Color.blue.opacity(0.3), lineWidth: 1)
-                                )
-                        )
-                    }
-                    .buttonStyle(PlainButtonStyle())
+                    )
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

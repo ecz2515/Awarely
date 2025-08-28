@@ -18,6 +18,7 @@ struct CatchUpView: View {
     @State private var completionScale: CGFloat = 0.8
     @State private var completionOpacity: Double = 0
     @ObservedObject var intervalTimer: IntervalTimer
+    @EnvironmentObject var coreDataManager: CoreDataManager
     
     // Order missed intervals latest first
     private var orderedMissedIntervals: [(start: Date, end: Date)] {
@@ -273,30 +274,12 @@ struct CatchUpView: View {
             } else {
                 FlowLayout(spacing: 8) {
                     ForEach(customTags, id: \.self) { tag in
-                        Button(action: {
-                            addTagToText(tag)
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "plus")
-                                    .font(.caption2)
-                                    .foregroundStyle(.blue)
-                                
-                                Text(tag)
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.blue)
+                        TagButtonWithFeedback(
+                            title: tag,
+                            action: {
+                                addTagToText(tag)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .fill(Color.blue.opacity(0.1))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                            .strokeBorder(Color.blue.opacity(0.3), lineWidth: 1)
-                                    )
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -332,6 +315,10 @@ struct CatchUpView: View {
                 timePeriodEnd: interval.end
             )
             
+            // Save to Core Data first
+            coreDataManager.addLogEntry(newEntry)
+            
+            // Then add to UI
             entries.insert(newEntry, at: 0)
             
             // Mark this interval as completed using its time period as key

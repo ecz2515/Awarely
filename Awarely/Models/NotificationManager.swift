@@ -8,10 +8,37 @@ class NotificationManager: ObservableObject {
     
     func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
-            if granted {
-                print("Notification permission granted")
-            } else if let error = error {
-                print("Notification permission error: \(error)")
+            DispatchQueue.main.async {
+                if granted {
+                    print("✅ Notification permission granted")
+                } else if let error = error {
+                    print("❌ Notification permission error: \(error)")
+                } else {
+                    print("❌ Notification permission denied by user")
+                }
+            }
+        }
+    }
+    
+    func checkNotificationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                print("📱 Notification Settings:")
+                print("   Authorization Status: \(settings.authorizationStatus.rawValue)")
+                print("   Alert Setting: \(settings.alertSetting.rawValue)")
+                print("   Badge Setting: \(settings.badgeSetting.rawValue)")
+                print("   Sound Setting: \(settings.soundSetting.rawValue)")
+            }
+        }
+        
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            DispatchQueue.main.async {
+                print("📅 Pending Notifications: \(requests.count)")
+                for request in requests {
+                    if let trigger = request.trigger as? UNCalendarNotificationTrigger {
+                        print("   - \(request.identifier): \(trigger.nextTriggerDate() ?? Date())")
+                    }
+                }
             }
         }
     }
@@ -19,7 +46,7 @@ class NotificationManager: ObservableObject {
     func scheduleLoggingReminder(at date: Date) {
         // Check if the notification is within the allowed time window
         if !isWithinNotificationTimeWindow(date) {
-            print("Notification not scheduled for \(date) - outside notification time window")
+            print("⚠️ Notification not scheduled for \(date) - outside notification time window")
             return
         }
         
@@ -43,10 +70,12 @@ class NotificationManager: ObservableObject {
         
         // Schedule notification
         UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("Error scheduling notification: \(error)")
-            } else {
-                print("Notification scheduled for \(date)")
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("❌ Error scheduling notification: \(error)")
+                } else {
+                    print("✅ Notification scheduled for \(date)")
+                }
             }
         }
     }

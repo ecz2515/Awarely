@@ -74,9 +74,9 @@ class IntervalTimer: ObservableObject {
         let now = Date()
         timeRemaining = nextIntervalDate.timeIntervalSince(now)
         
-        // Get configured grace period from UserDefaults
-        let gracePeriodMinutes = UserDefaults.standard.integer(forKey: "loggingGracePeriod")
-        let gracePeriod = gracePeriodMinutes > 0 ? gracePeriodMinutes : 5 // Default to 5 minutes
+        // Get configured grace period from Core Data
+        let gracePeriodMinutes = CoreDataManager.shared.getUserProfile()?.loggingGracePeriod ?? 5
+        let gracePeriod = Int(gracePeriodMinutes)
         let lateGracePeriod: TimeInterval = 5 * 60 // 5 minutes late grace period
         
         // Check if we're in early grace period (before interval ends)
@@ -207,12 +207,12 @@ class IntervalTimer: ObservableObject {
     // MARK: - Notification Time Window
     
     private func isWithinNotificationTimeWindow(_ date: Date) -> Bool {
-        let defaults = UserDefaults.standard
         let calendar = Calendar.current
+        let userProfile = CoreDataManager.shared.getUserProfile()
         
         // Get notification start time
         let notificationStartTime: Date
-        if let savedStartTime = defaults.object(forKey: "notificationStartTime") as? Date {
+        if let savedStartTime = userProfile?.notificationStartTime {
             // Use the saved start time, but if it's from a previous day, use today's start time
             let today = calendar.startOfDay(for: date)
             let savedStartComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
@@ -228,7 +228,7 @@ class IntervalTimer: ObservableObject {
         
         // Get notification end time
         let notificationEndTime: Date
-        if let savedEndTime = defaults.object(forKey: "notificationEndTime") as? Date {
+        if let savedEndTime = userProfile?.notificationEndTime {
             // Use the saved end time, but if it's from a previous day, use today's end time
             let today = calendar.startOfDay(for: date)
             let savedEndComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
@@ -249,17 +249,17 @@ class IntervalTimer: ObservableObject {
     // MARK: - Missed Intervals Utility
     
     func getMissedIntervals(for entries: [LogEntry]) -> [(start: Date, end: Date)] {
-        let reminderInterval = UserDefaults.standard.double(forKey: "reminderInterval")
-        let intervalMinutes = reminderInterval > 0 ? Int(reminderInterval / 60) : 30
+        let userProfile = CoreDataManager.shared.getUserProfile()
+        let reminderInterval = userProfile?.reminderInterval ?? 30 * 60
+        let intervalMinutes = Int(reminderInterval / 60)
         let intervalDuration: TimeInterval = TimeInterval(intervalMinutes * 60)
         
         let now = Date()
         
-        // Get notification start time from UserDefaults, default to 9 AM today if not set
-        let defaults = UserDefaults.standard
+        // Get notification start time from Core Data, default to 9 AM today if not set
         let calendar = Calendar.current
         let notificationStartTime: Date
-        if let savedStartTime = defaults.object(forKey: "notificationStartTime") as? Date {
+        if let savedStartTime = userProfile?.notificationStartTime {
             // Use the saved start time, but if it's from a previous day, use today's start time
             let today = calendar.startOfDay(for: now)
             let savedStartComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
@@ -277,7 +277,7 @@ class IntervalTimer: ObservableObject {
         
         // Get notification end time
         let notificationEndTime: Date
-        if let savedEndTime = defaults.object(forKey: "notificationEndTime") as? Date {
+        if let savedEndTime = userProfile?.notificationEndTime {
             // Use the saved end time, but if it's from a previous day, use today's end time
             let today = calendar.startOfDay(for: now)
             let savedEndComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)

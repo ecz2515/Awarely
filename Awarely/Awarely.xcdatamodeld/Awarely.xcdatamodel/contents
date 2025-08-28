@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22522" systemVersion="23C71" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="YES" userDefinedModelVersionIdentifier="">
+    <entity name="PersistentLogEntry" representedClassName="PersistentLogEntry" syncable="YES" codeGenerationType="class">
+        <attribute name="id" optional="NO" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="tags" optional="YES" attributeType="Transformable" valueTransformerName="NSSecureUnarchiveFromData" customClassName="[String]"/>
+        <attribute name="text" optional="NO" attributeType="String" defaultValueString=""/>
+        <attribute name="timePeriodEnd" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="timePeriodStart" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="timestamp" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="userProfile" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="UserProfile" inverseName="entries" inverseEntity="UserProfile"/>
+    </entity>
+    <entity name="UserProfile" representedClassName="UserProfile" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="customTags" optional="YES" attributeType="Transformable" valueTransformerName="NSSecureUnarchiveFromData" customClassName="[String]"/>
+        <attribute name="id" optional="NO" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="isPremiumUser" optional="NO" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="loggingGracePeriod" optional="NO" attributeType="Integer 32" defaultValueString="5" usesScalarValueType="YES"/>
+        <attribute name="name" optional="NO" attributeType="String" defaultValueString="User"/>
+        <attribute name="notificationEnabled" optional="NO" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="notificationEndTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="notificationStartTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="reminderInterval" optional="NO" attributeType="Double" defaultValueString="1800" usesScalarValueType="YES"/>
+        <relationship name="entries" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="PersistentLogEntry" inverseName="userProfile" inverseEntity="PersistentLogEntry"/>
+    </entity>
+</model>

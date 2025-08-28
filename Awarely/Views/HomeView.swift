@@ -12,6 +12,7 @@ struct HomeView: View {
     @Binding var customTags: [String]
     @State private var showingEntriesList = false
     @ObservedObject var intervalTimer: IntervalTimer
+    @EnvironmentObject var coreDataManager: CoreDataManager
     
     // Update timer state when entries change
     private func updateTimerState() {
@@ -159,6 +160,8 @@ struct HomeView: View {
                         EnhancedEntryRow(entry: entry, customTags: customTags) { updated in
                             if let idx = entries.firstIndex(where: { $0.id == updated.id }) {
                                 entries[idx] = updated
+                                // Save updated entry to Core Data
+                                coreDataManager.updateLogEntry(updated)
                             }
                         }
                         .transition(.asymmetric(

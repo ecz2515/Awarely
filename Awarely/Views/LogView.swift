@@ -7,6 +7,57 @@
 
 import SwiftUI
 
+struct TagButtonWithFeedback: View {
+    let title: String
+    let action: () -> Void
+    @State private var isPressed = false
+    
+    var body: some View {
+        Button(action: {
+            // Haptic feedback
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.impactOccurred()
+            
+            // Visual feedback
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = true
+            }
+            
+            // Execute the action
+            action()
+            
+            // Reset visual feedback
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    isPressed = false
+                }
+            }
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: "plus")
+                    .font(.caption2)
+                    .foregroundStyle(.blue)
+                
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.blue)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.blue.opacity(isPressed ? 0.2 : 0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(Color.blue.opacity(isPressed ? 0.5 : 0.3), lineWidth: 1)
+                    )
+            )
+            .scaleEffect(isPressed ? 0.95 : 1.0)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
 struct LogView: View {
     @Binding var entries: [LogEntry]
     @Binding var newEntry: String
@@ -19,11 +70,13 @@ struct LogView: View {
     @ObservedObject var intervalTimer: IntervalTimer
     @Binding var shouldNavigateToHome: Bool
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var coreDataManager: CoreDataManager
     
     private var reminderIntervalText: String {
-        // Get the reminder interval from UserDefaults or use default 30 minutes
-        let reminderInterval = UserDefaults.standard.double(forKey: "reminderInterval")
-        let reminderMinutes = reminderInterval > 0 ? Int(reminderInterval / 60) : 30
+        // Get the reminder interval from Core Data or use default 30 minutes
+        let userProfile = coreDataManager.getUserProfile()
+        let reminderInterval = userProfile?.reminderInterval ?? 30 * 60
+        let reminderMinutes = Int(reminderInterval / 60)
         return "\(reminderMinutes)"
     }
     
@@ -59,14 +112,14 @@ struct LogView: View {
     private func getCurrentLoggingInterval() -> (start: Date, end: Date, isLateGrace: Bool) {
         let now = Date()
         let calendar = Calendar.current
-        let reminderInterval = UserDefaults.standard.double(forKey: "reminderInterval")
-        let intervalMinutes = reminderInterval > 0 ? Int(reminderInterval / 60) : 30
+        let userProfile = coreDataManager.getUserProfile()
+        let reminderInterval = userProfile?.reminderInterval ?? 30 * 60
+        let intervalMinutes = Int(reminderInterval / 60)
         let intervalDuration: TimeInterval = TimeInterval(intervalMinutes * 60)
         
-        // Get grace periods from UserDefaults
-        let gracePeriodMinutes = UserDefaults.standard.integer(forKey: "loggingGracePeriod")
-        _ = gracePeriodMinutes > 0 ? gracePeriodMinutes : 5 // Default to 5 minutes
-        _ = 5
+        // Get grace periods from Core Data
+        let gracePeriodMinutes = userProfile?.loggingGracePeriod ?? 5
+        _ = Int(gracePeriodMinutes) // Default to 5 minutes
         
         // Calculate interval boundaries
         let currentMinute = calendar.component(.minute, from: now)
@@ -271,30 +324,12 @@ struct LogView: View {
             } else {
                 FlowLayout(spacing: 8) {
                     ForEach(customTags, id: \.self) { tag in
-                        Button(action: {
-                            addTagToText(tag)
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "plus")
-                                    .font(.caption2)
-                                    .foregroundStyle(.blue)
-                                
-                                Text(tag)
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.blue)
+                        TagButtonWithFeedback(
+                            title: tag,
+                            action: {
+                                addTagToText(tag)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .fill(Color.blue.opacity(0.1))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                            .strokeBorder(Color.blue.opacity(0.3), lineWidth: 1)
-                                    )
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -407,6 +442,9 @@ struct LogView: View {
             timePeriodStart: currentInterval.start,
             timePeriodEnd: currentInterval.end
         )
+        
+        // Save to Core Data
+        coreDataManager.addLogEntry(newLogEntry)
         
         withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
             entries.insert(newLogEntry, at: 0)

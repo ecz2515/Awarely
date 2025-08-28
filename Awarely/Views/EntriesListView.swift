@@ -13,6 +13,7 @@ struct EntriesListView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedDate = Date()
     @State private var currentWeekOffset = 0
+    @EnvironmentObject var coreDataManager: CoreDataManager
     
     var selectedDateEntries: [LogEntry] {
         let calendar = Calendar.current
@@ -59,11 +60,23 @@ struct EntriesListView: View {
                             } else {
                                 LazyVStack(spacing: 12) {
                                     ForEach(selectedDateEntries) { entry in
-                                        EnhancedEntryRow(entry: entry, customTags: customTags) { updated in
-                                            if let idx = entries.firstIndex(where: { $0.id == updated.id }) {
-                                                entries[idx] = updated
+                                        EnhancedEntryRow(
+                                            entry: entry, 
+                                            customTags: customTags,
+                                            onEdit: { updated in
+                                                if let idx = entries.firstIndex(where: { $0.id == updated.id }) {
+                                                    entries[idx] = updated
+                                                    // Save updated entry to Core Data
+                                                    coreDataManager.updateLogEntry(updated)
+                                                }
+                                            },
+                                            onDelete: { entryId in
+                                                // Remove from local array
+                                                entries.removeAll { $0.id == entryId }
+                                                // Delete from Core Data
+                                                coreDataManager.deleteLogEntry(withId: entryId)
                                             }
-                                        }
+                                        )
                                         .transition(.asymmetric(
                                             insertion: .scale.combined(with: .opacity),
                                             removal: .scale.combined(with: .opacity)
