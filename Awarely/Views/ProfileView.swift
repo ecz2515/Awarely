@@ -53,9 +53,6 @@ struct ProfileView: View {
                         // Smart Features Section
                         smartFeaturesSection
                         
-                        // Debug Section (for testing notifications)
-                        debugSection
-                        
                         Spacer(minLength: 40)
                     }
                     .padding(.horizontal, 20)
@@ -536,85 +533,7 @@ struct ProfileView: View {
         }
     }
     
-    private var debugSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Debug")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.primary)
-            
-            VStack(spacing: 12) {
-                Button("Test Notification") {
-                    let content = UNMutableNotificationContent()
-                    content.title = "Time to Log!"
-                    content.body = "Don't forget to log your activities for today."
-                    content.sound = .default
-                    
-                    let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
-                    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
-                    
-                    UNUserNotificationCenter.current().add(request) { error in
-                        if let error = error {
-                            print("Error scheduling notification: \(error.localizedDescription)")
-                        } else {
-                            print("Notification scheduled successfully!")
-                        }
-                    }
-                }
-                .padding(.vertical, 10)
-                .padding(.horizontal, 15)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(.blue.opacity(0.2))
-                )
-                .foregroundStyle(.blue)
-                
-                Button("Clear All Notifications") {
-                    UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
-                    print("All pending notifications cleared.")
-                }
-                .padding(.vertical, 10)
-                .padding(.horizontal, 15)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(.red.opacity(0.2))
-                )
-                .foregroundStyle(.red)
-                
-                Button("Check Notification Status") {
-                    NotificationManager.shared.checkNotificationStatus()
-                }
-                .padding(.vertical, 10)
-                .padding(.horizontal, 15)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(.green.opacity(0.2))
-                )
-                .foregroundStyle(.green)
-                
-                Button("Schedule Next Interval") {
-                    let nextInterval = intervalTimer.nextIntervalDate
-                    NotificationManager.shared.scheduleLoggingReminder(at: nextInterval)
-                    print("Manually scheduled notification for next interval: \(nextInterval)")
-                }
-                .padding(.vertical, 10)
-                .padding(.horizontal, 15)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(.orange.opacity(0.2))
-                )
-                .foregroundStyle(.orange)
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(.quaternary, lineWidth: 0.5)
-                )
-        )
-    }
+
     
     // MARK: - Helper Functions
     

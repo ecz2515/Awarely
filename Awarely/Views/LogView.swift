@@ -432,8 +432,7 @@ struct LogView: View {
             newEntry = trimmed + ", " + tag
         }
         
-        // Focus the text field and move cursor to end
-        isFieldFocused = true
+        // Don't automatically focus the text field - let user decide if they want to type more
     }
     
     private func addEntry() {
