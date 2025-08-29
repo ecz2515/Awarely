@@ -513,51 +513,153 @@ struct CustomTagsView: View {
     @Binding var customTags: [String]
     @Environment(\.dismiss) private var dismiss
     @State private var newTag = ""
+    @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Add new tag section
-                VStack(spacing: 16) {
-                    HStack {
-                        TextField("Add new tag...", text: $newTag)
-                            .textFieldStyle(.roundedBorder)
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Add New Tag")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
                         
-                        Button("Add") {
-                            addTag()
+                        Text("Create quick tags for common activities")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    HStack(spacing: 12) {
+                        TextField("Enter tag name...", text: $newTag)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($isTextFieldFocused)
+                            .onSubmit {
+                                addTag()
+                            }
+                        
+                        Button(action: addTag) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "plus")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("Add")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(
+                                newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? Color.gray
+                                : Color.blue,
+                                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            )
                         }
                         .disabled(newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .foregroundStyle(.blue)
+                        .scaleEffect(newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.95 : 1.0)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
                 .padding(20)
-                .background(Color(.systemGray6))
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .strokeBorder(.quaternary, lineWidth: 0.5)
+                        )
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
                 
                 // Tags list
-                List {
-                    ForEach(customTags, id: \.self) { tag in
-                        HStack {
-                            Text(tag)
-                                .font(.body)
-                            Spacer()
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Your Tags")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        
+                        Spacer()
+                        
+                        Text("\(customTags.count) tag\(customTags.count == 1 ? "" : "s")")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(.ultraThinMaterial)
+                            )
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 24)
+                    .padding(.bottom, 16)
+                    
+                    if customTags.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "tag")
+                                .font(.system(size: 32))
+                                .foregroundStyle(.secondary)
+                            
+                            Text("No tags yet")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.secondary)
                         }
-                        .swipeActions(edge: .trailing) {
-                            Button("Delete", role: .destructive) {
-                                deleteTag(tag)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                    } else {
+                        List {
+                            ForEach(customTags, id: \.self) { tag in
+                                HStack(spacing: 12) {
+                                    Image(systemName: "tag.fill")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.blue)
+                                    
+                                    Text(tag)
+                                        .font(.body)
+                                        .foregroundStyle(.primary)
+                                    
+                                    Spacer()
+                                    
+                                    Button(action: {
+                                        deleteTag(tag)
+                                    }) {
+                                        Image(systemName: "trash")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.red)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                                .padding(.vertical, 4)
+                                .swipeActions(edge: .trailing) {
+                                    Button("Delete", role: .destructive) {
+                                        deleteTag(tag)
+                                    }
+                                }
                             }
                         }
+                        .listStyle(.plain)
                     }
                 }
+                
+                Spacer()
             }
-            .navigationTitle("Custom Tags")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Quick Tags")
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.blue)
                 }
             }
+        }
+        .onTapGesture {
+            // Dismiss keyboard when tapping outside
+            isTextFieldFocused = false
         }
     }
     
@@ -565,12 +667,26 @@ struct CustomTagsView: View {
         let trimmed = newTag.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty && !customTags.contains(trimmed) else { return }
         
-        customTags.append(trimmed)
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+            customTags.append(trimmed)
+        }
+        
         newTag = ""
+        isTextFieldFocused = false
+        
+        // Haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
     }
     
     private func deleteTag(_ tag: String) {
-        customTags.removeAll { $0 == tag }
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+            customTags.removeAll { $0 == tag }
+        }
+        
+        // Haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
     }
 }
 
