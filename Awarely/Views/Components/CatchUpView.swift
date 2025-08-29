@@ -217,15 +217,19 @@ struct CatchUpView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                if !showingCompletion {
-                    mainContent
+                            ZStack {
+                    if !showingCompletion {
+                        mainContent
+                    }
+                    
+                    if showingCompletion {
+                        completionOverlay
+                    }
                 }
-                
-                if showingCompletion {
-                    completionOverlay
+                .onTapGesture {
+                    // Dismiss keyboard when tapping outside text field
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
-            }
         }
         .onChange(of: completedIntervals) { _, newValue in
             handleCompletedIntervalsChange(newValue)

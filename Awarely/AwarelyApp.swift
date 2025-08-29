@@ -15,6 +15,7 @@ struct AwarelyApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(coreDataManager)
+                .dismissKeyboardOnTap()
         }
     }
 }

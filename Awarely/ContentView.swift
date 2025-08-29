@@ -7,6 +7,30 @@
 
 import SwiftUI
 
+// MARK: - Keyboard Dismissal Modifier
+struct KeyboardDismissalModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        hideKeyboard()
+                    }
+            )
+    }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+}
+
+extension View {
+    func dismissKeyboardOnTap() -> some View {
+        self.modifier(KeyboardDismissalModifier())
+    }
+}
+
 struct ContentView: View {
     @State private var selectedTab = 0
     @State private var entries: [LogEntry] = []
@@ -100,6 +124,7 @@ struct ContentView: View {
         .onChange(of: customTags) { _, _ in
             saveCustomTagsToCoreData()
         }
+        .dismissKeyboardOnTap()
     }
     
     // MARK: - First Launch Check

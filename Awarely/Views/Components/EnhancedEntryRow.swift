@@ -114,6 +114,10 @@ struct EnhancedEntryRow: View {
                         .padding(.top, 20)
                         .padding(.bottom, 100)
                     }
+                    .onTapGesture {
+                        // Dismiss keyboard when tapping outside text field
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
                 }
                 .navigationTitle("Edit Entry")
                 .navigationBarTitleDisplayMode(.inline)
