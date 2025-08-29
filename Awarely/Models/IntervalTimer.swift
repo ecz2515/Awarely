@@ -110,7 +110,7 @@ class IntervalTimer: ObservableObject {
         updateTimerState()
     }
     
-    private func hasEntryForPreviousInterval(entries: [LogEntry]) -> Bool {
+    func hasEntryForPreviousInterval(entries: [LogEntry]) -> Bool {
         let previousIntervalStart = getPreviousIntervalStart()
         let previousIntervalEnd = getPreviousIntervalEnd()
         

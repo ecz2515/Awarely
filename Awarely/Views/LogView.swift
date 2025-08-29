@@ -81,7 +81,9 @@ struct LogView: View {
     }
     
     private var isLoggingMissedInterval: Bool {
-        return intervalTimer.isLateGracePeriod
+        // Only show red if we're in late grace period AND there's already a previous entry
+        // Otherwise, show blue/green to encourage logging
+        return intervalTimer.isLateGracePeriod && intervalTimer.hasEntryForPreviousInterval(entries: entries)
     }
     
     private var isLoggingDisabled: Bool {
@@ -158,7 +160,8 @@ struct LogView: View {
         let startTime = interval.start.formatted(date: .omitted, time: .shortened)
         let endTime = interval.end.formatted(date: .omitted, time: .shortened)
         
-        if interval.isLateGrace {
+        // Only show "(Late)" if we're in late grace period AND there's already a previous entry
+        if interval.isLateGrace && intervalTimer.hasEntryForPreviousInterval(entries: entries) {
             return "\(startTime) - \(endTime) (Late)"
         } else {
             return "\(startTime) - \(endTime)"
@@ -202,6 +205,10 @@ struct LogView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 40)
                     .padding(.bottom, 20)
+                }
+                .onTapGesture {
+                    // Dismiss keyboard when tapping outside text field
+                    isFieldFocused = false
                 }
             }
             .sheet(isPresented: $showingCustomTags) {

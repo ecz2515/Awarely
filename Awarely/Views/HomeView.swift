@@ -92,14 +92,23 @@ struct HomeView: View {
     
     private var timerStatusSection: some View {
         let hasCurrentEntry = intervalTimer.hasEntryForCurrentInterval(entries: entries)
-        let shouldShowTimer = !intervalTimer.isLoggingWindow || (intervalTimer.isLoggingWindow && hasCurrentEntry)
+        let hasPreviousEntry = intervalTimer.hasEntryForPreviousInterval(entries: entries)
+        
+        // If we're in late grace period but there's already a previous entry, show timer for next interval
+        // Otherwise, show timer if we're in logging window or have current entry
+        let shouldShowTimer = (intervalTimer.isLateGracePeriod && hasPreviousEntry) || 
+                             (!intervalTimer.isLoggingWindow) || 
+                             (intervalTimer.isLoggingWindow && hasCurrentEntry)
+        
+        // During late grace period with no previous entry, show green "ready to log"
+        let isLateGraceWithNoEntry = intervalTimer.isLateGracePeriod && !hasPreviousEntry
         
         return HStack {
             HStack {
-                Image(systemName: intervalTimer.isLateGracePeriod ? "exclamationmark.triangle.fill" : (shouldShowTimer ? "timer" : "checkmark.circle.fill"))
-                    .foregroundStyle(intervalTimer.isLateGracePeriod ? .red : (shouldShowTimer ? .orange : .green))
+                Image(systemName: shouldShowTimer ? "timer" : "checkmark.circle.fill")
+                    .foregroundStyle(shouldShowTimer ? .orange : .green)
                 
-                Text(intervalTimer.isLateGracePeriod ? "Log your previous activity now" : (shouldShowTimer ? "\(intervalTimer.hasEntryForCurrentInterval(entries: entries) ? intervalTimer.formatTimeUntilNextIntervalEnd() : intervalTimer.formatTimeRemaining()) until next check-in" : "Ready to log your activity"))
+                Text(shouldShowTimer ? "\(intervalTimer.hasEntryForCurrentInterval(entries: entries) ? intervalTimer.formatTimeUntilNextIntervalEnd() : intervalTimer.formatTimeRemaining()) until next check-in" : "Ready to log your activity")
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.primary)
             }
@@ -116,7 +125,7 @@ struct HomeView: View {
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(intervalTimer.isLateGracePeriod ? Color.red.opacity(0.1) : (shouldShowTimer ? Color.orange.opacity(0.1) : Color.green.opacity(0.1)))
+                .fill(shouldShowTimer ? Color.orange.opacity(0.1) : Color.green.opacity(0.1))
         )
     }
     
