@@ -113,12 +113,12 @@ class NotificationManager: ObservableObject {
     // MARK: - Notification Time Window
     
     private func isWithinNotificationTimeWindow(_ date: Date) -> Bool {
-        let defaults = UserDefaults.standard
         let calendar = Calendar.current
+        let userProfile = CoreDataManager.shared.getUserProfile()
         
         // Get notification start time
         let notificationStartTime: Date
-        if let savedStartTime = defaults.object(forKey: "notificationStartTime") as? Date {
+        if let savedStartTime = userProfile?.notificationStartTime {
             // Use the saved start time, but if it's from a previous day, use today's start time
             let today = calendar.startOfDay(for: date)
             let savedStartComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
@@ -134,7 +134,7 @@ class NotificationManager: ObservableObject {
         
         // Get notification end time
         let notificationEndTime: Date
-        if let savedEndTime = defaults.object(forKey: "notificationEndTime") as? Date {
+        if let savedEndTime = userProfile?.notificationEndTime {
             // Use the saved end time, but if it's from a previous day, use today's end time
             let today = calendar.startOfDay(for: date)
             let savedEndComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
