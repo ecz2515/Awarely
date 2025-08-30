@@ -248,32 +248,8 @@ struct DayButton: View {
                 Text(date.formatted(.dateTime.day()))
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(isSelected ? .white : .primary)
-                
-                // Entry count with better visual treatment
-                VStack(spacing: 2) {
-                    if entryCount > 0 {
-                        Text("\(entryCount)")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(isSelected ? .white : .blue)
-                        
-                        // Small indicator dots for multiple entries
-                        if entryCount > 1 {
-                            HStack(spacing: 2) {
-                                ForEach(0..<min(entryCount, 3), id: \.self) { _ in
-                                    Circle()
-                                        .fill(isSelected ? .white : .blue)
-                                        .frame(width: 3, height: 3)
-                                }
-                            }
-                        }
-                    } else {
-                        Text("0")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(isSelected ? .white.opacity(0.6) : .secondary)
-                    }
-                }
             }
-            .frame(width: 44, height: 80)
+            .frame(width: 44, height: 60)
             .background(
                 isSelected ? Color.blue : Color(.systemGray6),
                 in: RoundedRectangle(cornerRadius: 12, style: .continuous)

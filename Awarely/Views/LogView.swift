@@ -213,6 +213,10 @@ struct LogView: View {
             }
             .sheet(isPresented: $showingCustomTags) {
                 CustomTagsView(customTags: $customTags)
+                    .onDisappear {
+                        // Ensure the sheet state is properly reset
+                        showingCustomTags = false
+                    }
             }
             .sheet(isPresented: $showingCatchUpFlow) {
                 CatchUpView(entries: $entries, customTags: $customTags, missedIntervals: getMissedIntervals(), intervalTimer: intervalTimer)
@@ -348,7 +352,10 @@ struct LogView: View {
     private var customizeTagsSection: some View {
         VStack(spacing: 12) {
             Button(action: {
-                showingCustomTags = true
+                // Add a small delay to ensure proper state handling
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    showingCustomTags = true
+                }
             }) {
                 HStack(spacing: 8) {
                     Image(systemName: "slider.horizontal.3")
@@ -516,19 +523,12 @@ struct CustomTagsView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
+            VStack(spacing: 20) {
                 // Add new tag section
-                VStack(spacing: 20) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Add New Tag")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        
-                        Text("Create quick tags for common activities")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Add New Tag")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
                     
                     HStack(spacing: 12) {
                         TextField("Enter tag name...", text: $newTag)
@@ -539,61 +539,45 @@ struct CustomTagsView: View {
                             }
                         
                         Button(action: addTag) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "plus")
-                                    .font(.subheadline.weight(.semibold))
-                                Text("Add")
-                                    .font(.subheadline.weight(.semibold))
-                            }
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                ? Color.gray
-                                : Color.blue,
-                                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            )
+                            Text("Add")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(minWidth: 80, minHeight: 44)
+                                .background(
+                                    newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                    ? Color.gray
+                                    : Color.blue,
+                                    in: RoundedRectangle(cornerRadius: 8)
+                                )
                         }
                         .disabled(newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .scaleEffect(newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.95 : 1.0)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .padding(20)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(.quaternary, lineWidth: 0.5)
-                        )
-                )
+                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, 20)
-                .padding(.top, 20)
                 
                 // Tags list
-                VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text("Your Tags")
+                        Text("Your Tags (\(customTags.count))")
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.primary)
                         
                         Spacer()
                         
-                        Text("\(customTags.count) tag\(customTags.count == 1 ? "" : "s")")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(.ultraThinMaterial)
-                            )
+                        if !customTags.isEmpty {
+                            Button("Clear All") {
+                                customTags.removeAll()
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(.red)
+                            .frame(minHeight: 44)
+                            .buttonStyle(PlainButtonStyle())
+                        }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 24)
-                    .padding(.bottom, 16)
                     
                     if customTags.isEmpty {
                         VStack(spacing: 12) {
@@ -608,37 +592,80 @@ struct CustomTagsView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 40)
                     } else {
-                        List {
-                            ForEach(customTags, id: \.self) { tag in
-                                HStack(spacing: 12) {
-                                    Image(systemName: "tag.fill")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.blue)
-                                    
-                                    Text(tag)
-                                        .font(.body)
-                                        .foregroundStyle(.primary)
-                                    
-                                    Spacer()
-                                    
-                                    Button(action: {
-                                        deleteTag(tag)
-                                    }) {
-                                        Image(systemName: "trash")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.red)
+                        ScrollView {
+                            LazyVStack(spacing: 8) {
+                                ForEach(Array(customTags.enumerated()), id: \.element) { index, tag in
+                                    HStack(spacing: 8) {
+                                        // Move up button
+                                        if index > 0 {
+                                            Button(action: {
+                                                moveTag(from: index, to: index - 1)
+                                            }) {
+                                                Image(systemName: "chevron.up")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.blue)
+                                                    .frame(width: 32, height: 32)
+                                                    .background(Color.blue.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                        } else {
+                                            Image(systemName: "chevron.up")
+                                                .font(.caption)
+                                                .foregroundStyle(.clear)
+                                                .frame(width: 32, height: 32)
+                                        }
+                                        
+                                        // Move down button
+                                        if index < customTags.count - 1 {
+                                            Button(action: {
+                                                moveTag(from: index, to: index + 1)
+                                            }) {
+                                                Image(systemName: "chevron.down")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.blue)
+                                                    .frame(width: 32, height: 32)
+                                                    .background(Color.blue.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                        } else {
+                                            Image(systemName: "chevron.down")
+                                                .font(.caption)
+                                                .foregroundStyle(.clear)
+                                                .frame(width: 32, height: 32)
+                                        }
+                                        
+                                        Text(tag)
+                                            .font(.body)
+                                            .foregroundStyle(.primary)
+                                        
+                                        Spacer()
+                                        
+                                        Button(action: {
+                                            deleteTag(tag)
+                                        }) {
+                                            Image(systemName: "trash")
+                                                .font(.caption)
+                                                .foregroundStyle(.red)
+                                                .frame(width: 32, height: 32)
+                                                .background(Color.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
                                     }
-                                    .buttonStyle(PlainButtonStyle())
-                                }
-                                .padding(.vertical, 4)
-                                .swipeActions(edge: .trailing) {
-                                    Button("Delete", role: .destructive) {
-                                        deleteTag(tag)
-                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 12)
+                                    .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .strokeBorder(Color(.systemGray4), lineWidth: 0.5)
+                                    )
                                 }
                             }
+                            .padding(.horizontal, 20)
                         }
-                        .listStyle(.plain)
+                        .onTapGesture {
+                            // Dismiss keyboard when tapping outside
+                            isTextFieldFocused = false
+                        }
                     }
                 }
                 
@@ -656,10 +683,7 @@ struct CustomTagsView: View {
                 }
             }
         }
-        .onTapGesture {
-            // Dismiss keyboard when tapping outside
-            isTextFieldFocused = false
-        }
+
     }
     
     private func addTag() {
@@ -667,11 +691,11 @@ struct CustomTagsView: View {
         guard !trimmed.isEmpty && !customTags.contains(trimmed) else { return }
         
         withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-            customTags.append(trimmed)
+            customTags.insert(trimmed, at: 0)
         }
         
         newTag = ""
-        isTextFieldFocused = false
+        isTextFieldFocused = true // Keep focus for adding multiple tags
         
         // Haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
@@ -687,7 +711,22 @@ struct CustomTagsView: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
     }
+    
+    private func moveTag(from: Int, to: Int) {
+        guard from >= 0 && from < customTags.count && to >= 0 && to < customTags.count else { return }
+        
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+            let tag = customTags.remove(at: from)
+            customTags.insert(tag, at: to)
+        }
+        
+        // Haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+    }
 }
+
+
 
 struct FlowLayout: Layout {
     let spacing: CGFloat
