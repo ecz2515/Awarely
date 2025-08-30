@@ -188,9 +188,6 @@ struct LogView: View {
                         // Header
                         logHeader
                         
-                        // Catch-up Section
-                        catchUpSection
-                        
                         // Quick Tags Section
                         quickTagsSection
                         
@@ -292,33 +289,7 @@ struct LogView: View {
         .padding(.bottom, 24)
     }
     
-    private var catchUpSection: some View {
-        VStack(spacing: 0) {
-            if !getMissedIntervals().isEmpty {
-                Button(action: { showingCatchUpFlow = true }) {
-                    HStack {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.subheadline)
-                            .foregroundStyle(.orange)
-                        
-                        Text("Catch up on \(getMissedIntervals().count) missed intervals")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.orange)
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Color.orange.opacity(0.1))
-                    )
-                }
-                .padding(.top, -8)
-                .padding(.bottom, 20)
-            }
-        }
-    }
+
     
     private var quickTagsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
