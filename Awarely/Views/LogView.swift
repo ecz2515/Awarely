@@ -250,15 +250,9 @@ struct LogView: View {
     
     private var logHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("What did you do?")
-                    .font(.largeTitle.weight(.bold))
-                    .foregroundStyle(.primary)
-                
-                Text("Log your activity for the past \(reminderIntervalText) minutes")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            Text("What did you do?")
+                .font(.largeTitle.weight(.bold))
+                .foregroundStyle(.primary)
             
             // Time period indicator
             VStack(spacing: 8) {
@@ -368,6 +362,32 @@ struct LogView: View {
 
             }
             
+            // Copy previous entry button
+            if let previousEntry = getPreviousIntervalEntry() {
+                Button(action: {
+                    copyPreviousEntry(previousEntry)
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 16, weight: .medium))
+                        Text("Copy previous entry")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color(.systemGray6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .strokeBorder(Color(.systemGray4), lineWidth: 0.5)
+                            )
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            
             Button(action: addEntry) {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
@@ -447,6 +467,39 @@ struct LogView: View {
             withAnimation(.easeInOut(duration: 0.3)) {
                 showingSuccessAnimation = false
             }
+        }
+    }
+    
+    private func copyPreviousEntry(_ entry: LogEntry) {
+        newEntry = entry.text
+        isFieldFocused = true
+        
+        // Haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        
+        // Visual feedback - briefly highlight the text field
+        withAnimation(.easeInOut(duration: 0.2)) {
+            // The text field will briefly show the copied content
+        }
+    }
+    
+    private func getPreviousIntervalEntry() -> LogEntry? {
+        let currentInterval = getCurrentLoggingInterval()
+        let userProfile = coreDataManager.getUserProfile()
+        let reminderInterval = userProfile?.reminderInterval ?? 30 * 60
+        let intervalDuration: TimeInterval = TimeInterval(reminderInterval)
+        
+        // Calculate the previous interval based on the current logging interval
+        let previousIntervalStart = currentInterval.start.addingTimeInterval(-intervalDuration)
+        let previousIntervalEnd = currentInterval.start
+        
+        // Find an entry that matches the previous interval
+        return entries.first { entry in
+            let entryStart = entry.timePeriodStart
+            let entryEnd = entry.timePeriodEnd
+            return abs(entryStart.timeIntervalSince(previousIntervalStart)) < 60 && 
+                   abs(entryEnd.timeIntervalSince(previousIntervalEnd)) < 60
         }
     }
     
