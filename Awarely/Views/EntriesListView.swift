@@ -77,10 +77,7 @@ struct EntriesListView: View {
                                                 coreDataManager.deleteLogEntry(withId: entryId)
                                             }
                                         )
-                                        .transition(.asymmetric(
-                                            insertion: .scale.combined(with: .opacity),
-                                            removal: .scale.combined(with: .opacity)
-                                        ))
+
                                     }
                                 }
                                 .padding(.horizontal, 20)
@@ -106,21 +103,17 @@ struct EntriesListView: View {
                         let threshold: CGFloat = 50
                         if value.translation.width > threshold {
                             // Swipe right - go to previous week
-                            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                                currentWeekOffset -= 1
-                                // Keep selected date in sync with current week
-                                if !weekDates.contains(selectedDate) {
-                                    selectedDate = weekDates[3] // Middle of the week
-                                }
+                            currentWeekOffset -= 1
+                            // Keep selected date in sync with current week
+                            if !weekDates.contains(selectedDate) {
+                                selectedDate = weekDates[3] // Middle of the week
                             }
                         } else if value.translation.width < -threshold {
                             // Swipe left - go to next week
-                            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                                currentWeekOffset += 1
-                                // Keep selected date in sync with current week
-                                if !weekDates.contains(selectedDate) {
-                                    selectedDate = weekDates[3] // Middle of the week
-                                }
+                            currentWeekOffset += 1
+                            // Keep selected date in sync with current week
+                            if !weekDates.contains(selectedDate) {
+                                selectedDate = weekDates[3] // Middle of the week
                             }
                         }
                     }
@@ -138,10 +131,8 @@ struct EntriesListView: View {
                 
                 // Today button
                 Button(action: {
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                        currentWeekOffset = 0
-                        selectedDate = Date()
-                    }
+                    currentWeekOffset = 0
+                    selectedDate = Date()
                 }) {
                     Text("Today")
                         .font(.caption.weight(.medium))
@@ -154,11 +145,9 @@ struct EntriesListView: View {
                 // Week navigation buttons
                 HStack(spacing: 12) {
                     Button(action: {
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                            currentWeekOffset -= 1
-                            if !weekDates.contains(selectedDate) {
-                                selectedDate = weekDates[3]
-                            }
+                        currentWeekOffset -= 1
+                        if !weekDates.contains(selectedDate) {
+                            selectedDate = weekDates[3]
                         }
                     }) {
                         Image(systemName: "chevron.left")
@@ -169,11 +158,9 @@ struct EntriesListView: View {
                     }
                     
                     Button(action: {
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                            currentWeekOffset += 1
-                            if !weekDates.contains(selectedDate) {
-                                selectedDate = weekDates[3]
-                            }
+                        currentWeekOffset += 1
+                        if !weekDates.contains(selectedDate) {
+                            selectedDate = weekDates[3]
                         }
                     }) {
                         Image(systemName: "chevron.right")
@@ -192,9 +179,7 @@ struct EntriesListView: View {
                         isSelected: Calendar.current.isDate(date, inSameDayAs: selectedDate),
                         entryCount: entriesForDate(date).count
                     ) {
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                            selectedDate = date
-                        }
+                        selectedDate = date
                     }
                 }
             }

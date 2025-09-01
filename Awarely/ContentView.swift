@@ -53,6 +53,8 @@ struct ContentView: View {
                     .onReceive(NotificationCenter.default.publisher(for: .profileCreated)) { _ in
                         showOnboarding = false
                         loadDataFromCoreData()
+                        // Request notification permission after onboarding is complete
+                        NotificationManager.shared.requestPermission()
                     }
             } else {
                 mainAppView
@@ -102,7 +104,6 @@ struct ContentView: View {
         .accentColor(.blue)
         .onAppear {
             loadDataFromCoreData()
-            NotificationManager.shared.requestPermission()
             intervalTimer.setEntries(entries)
         }
         .onChange(of: shouldNavigateToHome) { _, newValue in
@@ -223,12 +224,8 @@ struct ContentView: View {
             
             entries = sampleEntries
             
-            // Save sample entries to Core Data (only if no entries exist)
-            if coreDataManager.fetchAllLogEntries().isEmpty {
-                for entry in sampleEntries {
-                    coreDataManager.addLogEntry(entry)
-                }
-            }
+            // Don't save sample entries to Core Data during initial load
+            // This prevents automatic profile creation and allows onboarding to show
         }
     }
     

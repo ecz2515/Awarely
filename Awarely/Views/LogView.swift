@@ -455,7 +455,7 @@ struct LogView: View {
         }
         
         newEntry = ""
-        isFieldFocused = true
+        isFieldFocused = false
         
         // Show success animation
         withAnimation(.easeInOut(duration: 0.3)) {
