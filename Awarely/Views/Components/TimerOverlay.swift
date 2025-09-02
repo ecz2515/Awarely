@@ -5,6 +5,7 @@ struct TimerOverlay: View {
     @Binding var entries: [LogEntry]
     @Binding var customTags: [String]
     @State private var showingCatchUpFlow = false
+    @State private var showingCustomTags = false
     var showTimeUntilNextIntervalEnd: Bool = false
     
     var body: some View {
@@ -62,9 +63,44 @@ struct TimerOverlay: View {
                 }
             }
             .padding(40)
-            .sheet(isPresented: $showingCatchUpFlow) {
-                CatchUpView(entries: $entries, customTags: $customTags, missedIntervals: intervalTimer.getMissedIntervals(for: entries), intervalTimer: intervalTimer)
+            
+            // Customize Tags button in top-right corner
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: { showingCustomTags = true }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "tag")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            
+                            Text("Quick Tags")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .strokeBorder(.quaternary, lineWidth: 0.5)
+                                )
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                Spacer()
             }
+            .padding(.top, 20)
+            .padding(.trailing, 20)
+        }
+        .sheet(isPresented: $showingCatchUpFlow) {
+            CatchUpView(entries: $entries, customTags: $customTags, missedIntervals: intervalTimer.getMissedIntervals(for: entries), intervalTimer: intervalTimer)
+        }
+        .sheet(isPresented: $showingCustomTags) {
+            CustomTagsView(customTags: $customTags)
         }
     }
 }
