@@ -105,6 +105,8 @@ class NotificationManager: ObservableObject {
         content.title = notificationMessages.randomElement() ?? "Time to Log Your Activity"
         content.body = notificationBodies.randomElement() ?? "Take a moment to reflect on what you've been working on for the past 30 minutes."
         content.sound = getRandomNotificationSound()
+        content.categoryIdentifier = "LOGGING_REMINDER"
+        content.threadIdentifier = "awarely-logging"
         
         // Create trigger for the specific date
         let trigger = UNCalendarNotificationTrigger(

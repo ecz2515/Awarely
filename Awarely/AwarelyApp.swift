@@ -31,6 +31,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         // Set notification delegate
         UNUserNotificationCenter.current().delegate = self
         
+        // Set up notification categories
+        setupNotificationCategories()
+        
         return true
     }
     
@@ -40,16 +43,40 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         completionHandler(.newData)
     }
     
+    // MARK: - Notification Setup
+    
+    private func setupNotificationCategories() {
+        // Create a category for logging reminders
+        let loggingCategory = UNNotificationCategory(
+            identifier: "LOGGING_REMINDER",
+            actions: [],
+            intentIdentifiers: [],
+            options: [.customDismissAction]
+        )
+        
+        // Register the category
+        UNUserNotificationCenter.current().setNotificationCategories([loggingCategory])
+        print("✅ Notification categories set up")
+    }
+    
     // MARK: - UNUserNotificationCenterDelegate
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         // Handle notification tap - navigate to LogView
-        NotificationCenter.default.post(name: .navigateToLogView, object: nil)
+        print("🔔 Notification tapped: \(response.notification.request.identifier)")
+        print("🔔 Notification content: \(response.notification.request.content.title)")
+        
+        // Post notification to navigate to LogView
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .navigateToLogView, object: nil)
+        }
+        
         completionHandler()
     }
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         // Show notification even when app is in foreground
+        print("🔔 Notification received while app is in foreground: \(notification.request.identifier)")
         completionHandler([.banner, .sound])
     }
 }

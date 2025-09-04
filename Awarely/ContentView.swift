@@ -114,6 +114,7 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToLogView)) { _ in
             // Navigate to LogView when notification is tapped
+            print("🔄 Received navigateToLogView notification, switching to tab 1")
             selectedTab = 1
         }
         .onChange(of: shouldNavigateToHome) { _, newValue in
