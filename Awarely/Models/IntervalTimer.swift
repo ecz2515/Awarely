@@ -358,4 +358,68 @@ class IntervalTimer: ObservableObject {
             return (start: currentIntervalStart, end: currentIntervalEnd, isLateGrace: false)
         }
     }
+    
+    // MARK: - End of Day Logic
+    
+    func isPastLoggingEndTime() -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        let userProfile = CoreDataManager.shared.getUserProfile()
+        
+        // Get notification end time
+        let notificationEndTime: Date
+        if let savedEndTime = userProfile?.notificationEndTime {
+            // Use the saved end time, but if it's from a previous day, use today's end time
+            let today = calendar.startOfDay(for: now)
+            let savedEndComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
+            notificationEndTime = calendar.date(bySettingHour: savedEndComponents.hour ?? 18, 
+                                              minute: savedEndComponents.minute ?? 0, 
+                                              second: 0, 
+                                              of: today) ?? now
+        } else {
+            // Default to 6 PM today
+            let today = calendar.startOfDay(for: now)
+            notificationEndTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? now
+        }
+        
+        return now > notificationEndTime
+    }
+    
+    func getTimeUntilTomorrowStart() -> TimeInterval {
+        let calendar = Calendar.current
+        let now = Date()
+        let userProfile = CoreDataManager.shared.getUserProfile()
+        
+        // Get tomorrow's start time
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now
+        let tomorrowStart = calendar.startOfDay(for: tomorrow)
+        
+        // Get notification start time
+        let notificationStartTime: Date
+        if let savedStartTime = userProfile?.notificationStartTime {
+            // Use the saved start time, but for tomorrow
+            let savedStartComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+            notificationStartTime = calendar.date(bySettingHour: savedStartComponents.hour ?? 9, 
+                                                minute: savedStartComponents.minute ?? 0, 
+                                                second: 0, 
+                                                of: tomorrowStart) ?? tomorrowStart
+        } else {
+            // Default to 9 AM tomorrow
+            notificationStartTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrowStart) ?? tomorrowStart
+        }
+        
+        return notificationStartTime.timeIntervalSince(now)
+    }
+    
+    func formatTimeUntilTomorrowStart() -> String {
+        let timeUntilStart = getTimeUntilTomorrowStart()
+        let hours = Int(timeUntilStart) / 3600
+        let minutes = Int(timeUntilStart) % 3600 / 60
+        
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes)m"
+        }
+    }
 }
