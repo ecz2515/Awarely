@@ -544,6 +544,7 @@ struct CustomTagsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var newTag = ""
     @FocusState private var isTextFieldFocused: Bool
+    @State private var showingClearAllAlert = false
     
     var body: some View {
         NavigationStack {
@@ -593,7 +594,7 @@ struct CustomTagsView: View {
                         
                         if !customTags.isEmpty {
                             Button("Clear All") {
-                                customTags.removeAll()
+                                showingClearAllAlert = true
                             }
                             .font(.subheadline)
                             .foregroundStyle(.red)
@@ -705,6 +706,14 @@ struct CustomTagsView: View {
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.blue)
                 }
+            }
+            .alert("Clear All Tags", isPresented: $showingClearAllAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Clear All", role: .destructive) {
+                    customTags.removeAll()
+                }
+            } message: {
+                Text("Are you sure? This action cannot be undone.")
             }
         }
 
