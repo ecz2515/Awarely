@@ -31,23 +31,23 @@ struct WelcomeStepView: View {
                 }
                 
                 VStack(spacing: 12) {
-                    Text("Welcome to Awarely")
+                    Text("Awarely")
                         .font(.largeTitle.weight(.bold))
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
                     
-                    Text("Build awareness of how you spend your time")
+                    Text("Your mindful companion for \n awareness-driven productivity")
                         .font(.title3)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .center)
             
             // Key Features
             VStack(spacing: 20) {
-                FeatureRow(icon: "clock", title: "Gentle Reminders", description: "Get mindful prompts throughout your day")
+                FeatureRow(icon: "clock", title: "Gentle Reminders", description: "Check in every 30 minutes")
                 FeatureRow(icon: "list.bullet", title: "Activity Logging", description: "Track what matters to you")
-                FeatureRow(icon: "chart.line.uptrend.xyaxis", title: "Progress Insights", description: "See patterns in your daily life")
             }
             .padding(.horizontal, 20)
             
@@ -78,9 +78,8 @@ struct FeatureRow: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            
-            Spacer()
         }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 }
 

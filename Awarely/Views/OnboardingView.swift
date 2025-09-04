@@ -78,23 +78,39 @@ struct OnboardingView: View {
                                 }
                             }
                             .buttonStyle(SecondaryButtonStyle())
-                        }
-                        
-                        Spacer()
-                        
-                        if currentStep < 5 {
-                            Button("Next") {
-                                withAnimation {
-                                    currentStep += 1
+                            
+                            Spacer()
+                            
+                            if currentStep < 5 {
+                                Button("Next") {
+                                    withAnimation {
+                                        currentStep += 1
+                                    }
                                 }
+                                .buttonStyle(PrimaryButtonStyle())
+                                .disabled(!canProceedToNext)
+                            } else {
+                                Button("Get Started") {
+                                    completeOnboarding()
+                                }
+                                .buttonStyle(PrimaryButtonStyle())
                             }
-                            .buttonStyle(PrimaryButtonStyle())
-                            .disabled(!canProceedToNext)
                         } else {
-                            Button("Get Started") {
-                                completeOnboarding()
+                            // Center the Next button on the first step
+                            if currentStep < 5 {
+                                Button("Next") {
+                                    withAnimation {
+                                        currentStep += 1
+                                    }
+                                }
+                                .buttonStyle(PrimaryButtonStyle())
+                                .disabled(!canProceedToNext)
+                            } else {
+                                Button("Get Started") {
+                                    completeOnboarding()
+                                }
+                                .buttonStyle(PrimaryButtonStyle())
                             }
-                            .buttonStyle(PrimaryButtonStyle())
                         }
                     }
                     .padding(.horizontal, 20)
