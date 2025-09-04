@@ -472,7 +472,6 @@ struct LogView: View {
     
     private func copyPreviousEntry(_ entry: LogEntry) {
         newEntry = entry.text
-        isFieldFocused = true
         
         // Haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
