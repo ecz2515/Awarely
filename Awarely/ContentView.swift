@@ -112,6 +112,10 @@ struct ContentView: View {
             // Reschedule notifications when app becomes active (after being backgrounded)
             NotificationManager.shared.scheduleNotificationsForToday()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToLogView)) { _ in
+            // Navigate to LogView when notification is tapped
+            selectedTab = 1
+        }
         .onChange(of: shouldNavigateToHome) { _, newValue in
             if newValue {
                 selectedTab = 0
@@ -264,6 +268,7 @@ struct ContentView: View {
 
 extension Notification.Name {
     static let profileCreated = Notification.Name("profileCreated")
+    static let navigateToLogView = Notification.Name("navigateToLogView")
 }
 
 #Preview {

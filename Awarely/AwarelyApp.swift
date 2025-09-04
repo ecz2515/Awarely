@@ -22,11 +22,15 @@ struct AwarelyApp: App {
     }
 }
 
-// MARK: - App Delegate for Background Fetch
-class AppDelegate: NSObject, UIApplicationDelegate {
+// MARK: - App Delegate for Background Fetch and Notification Handling
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Set minimum background fetch interval
         UIApplication.shared.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
+        
+        // Set notification delegate
+        UNUserNotificationCenter.current().delegate = self
+        
         return true
     }
     
@@ -34,5 +38,18 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Schedule notifications for the next few hours when woken up by iOS
         NotificationManager.shared.scheduleNotificationsForNextHours(hours: 4)
         completionHandler(.newData)
+    }
+    
+    // MARK: - UNUserNotificationCenterDelegate
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // Handle notification tap - navigate to LogView
+        NotificationCenter.default.post(name: .navigateToLogView, object: nil)
+        completionHandler()
+    }
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        // Show notification even when app is in foreground
+        completionHandler([.banner, .sound])
     }
 }
