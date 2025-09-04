@@ -713,10 +713,8 @@ struct ProfileView: View {
             gracePeriod = 5 // Default to 5 minutes
         }
         
-        // Ensure reminder interval defaults to 30 minutes if not set
-        if reminderInterval == 0 {
-            reminderInterval = 30 * 60
-        }
+        // Note: reminderInterval is managed by ContentView and passed as a binding
+        // We don't modify it here, just use it for calculations
     }
     
     private func saveSettingsToCoreData() {

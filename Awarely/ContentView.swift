@@ -44,6 +44,9 @@ struct ContentView: View {
     @State private var shouldNavigateToHome = false
     @State private var showOnboarding = false
     
+    // Set this to true to force onboarding, false to use normal logic
+    private let forceOnboardingFlag = true
+    
     @EnvironmentObject var coreDataManager: CoreDataManager
     
     var body: some View {
@@ -142,6 +145,12 @@ struct ContentView: View {
     // MARK: - First Launch Check
     
     private func checkFirstLaunch() {
+        // Check force flag first
+        if forceOnboardingFlag {
+            showOnboarding = true
+            return
+        }
+        
         if let userProfile = coreDataManager.getUserProfile() {
             // User profile exists, load data
             showOnboarding = false

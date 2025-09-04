@@ -206,7 +206,15 @@ class CoreDataManager: ObservableObject {
         
         do {
             let results = try viewContext.fetch(request)
-            return results.first
+            if let profile = results.first {
+                // Fix for existing users: if reminder interval is unreasonably large (> 2 hours), reset to default
+                if profile.reminderInterval > 2 * 60 * 60 {
+                    profile.reminderInterval = 30 * 60 // Reset to 30 minutes
+                    saveUserProfile()
+                }
+                return profile
+            }
+            return nil
         } catch {
             print("Error fetching user profile: \(error)")
             return nil

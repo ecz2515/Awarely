@@ -1,10 +1,21 @@
 import SwiftUI
 
 struct OnboardingView: View {
-    @State private var userName: String = ""
     @State private var currentStep = 0
-    @State private var isProfileCreated = false
+    @State private var userName = ""
+    @State private var activeDaysPreset = ActiveDaysPreset.weekdays
+    @State private var notificationStartTime = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
+    @State private var notificationEndTime = Calendar.current.date(from: DateComponents(hour: 18, minute: 0)) ?? Date()
+    @State private var selectedTags: Set<String> = []
+    @State private var pushNotificationsEnabled = false
+    
     @ObservedObject var coreDataManager = CoreDataManager.shared
+    @Environment(\.dismiss) private var dismiss
+    
+    private let availableTags = [
+        "Read", "Exercise", "Meditate", "Work", "Journal", 
+        "Practice", "Study", "Walk", "Cook", "Clean"
+    ]
     
     var body: some View {
         NavigationStack {
@@ -13,7 +24,6 @@ struct OnboardingView: View {
                 LinearGradient(
                     colors: [
                         Color(.systemBackground),
-                        Color(.systemBackground).opacity(0.95),
                         Color(.secondarySystemBackground).opacity(0.3)
                     ],
                     startPoint: .topLeading,
@@ -21,149 +31,148 @@ struct OnboardingView: View {
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 40) {
-                    Spacer()
+                VStack(spacing: 0) {
+                    // Progress indicator
+                    ProgressView(value: Double(currentStep + 1), total: 6)
+                        .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
                     
-                    // App Icon and Title
-                    VStack(spacing: 20) {
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.blue.opacity(0.2), .purple.opacity(0.2)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 120, height: 120)
-                            
-                            Image(systemName: "brain.head.profile")
-                                .font(.system(size: 50, weight: .medium))
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.blue, .purple],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                        }
+                    // Step content
+                    TabView(selection: $currentStep) {
+                        WelcomeStepView()
+                            .tag(0)
                         
-                        VStack(spacing: 8) {
-                            Text("Welcome to Awarely")
-                                .font(.largeTitle.weight(.bold))
-                                .foregroundStyle(.primary)
-                            
-                            Text("Let's set up your mindfulness journey")
-                                .font(.title3)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                    }
-                    
-                    // Profile Creation Form
-                    VStack(spacing: 24) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("What should we call you?")
-                                .font(.headline.weight(.semibold))
-                                .foregroundStyle(.primary)
-                            
-                            Text("This helps personalize your experience")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
+                        NameStepView(userName: $userName)
+                            .tag(1)
                         
-                        TextField("Enter your name", text: $userName)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.title3)
-                            .padding(.horizontal, 20)
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    // Create Profile Button
-                    Button(action: createProfile) {
-                        HStack {
-                            Text("Create Profile")
-                                .font(.headline.weight(.semibold))
-                            
-                            Image(systemName: "arrow.right")
-                                .font(.headline)
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.blue, .purple],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
+                        ActiveDaysStepView(activeDaysPreset: $activeDaysPreset)
+                            .tag(2)
+                        
+                        NotificationWindowStepView(
+                            startTime: $notificationStartTime,
+                            endTime: $notificationEndTime
                         )
-                    }
-                    .disabled(userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .opacity(userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.6 : 1.0)
-                    .padding(.horizontal, 20)
-                    
-                    Spacer()
-                    
-                    // App Description
-                    VStack(spacing: 16) {
-                        Text("Awarely helps you build awareness of how you spend your time through mindful logging and gentle reminders.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
+                        .tag(3)
                         
-                        HStack(spacing: 20) {
-                            FeatureBadge(icon: "clock", title: "Timed Reminders")
-                            FeatureBadge(icon: "list.bullet", title: "Activity Logging")
-                            FeatureBadge(icon: "chart.line.uptrend.xyaxis", title: "Progress Tracking")
+                        TagsStepView(
+                            selectedTags: $selectedTags,
+                            availableTags: availableTags
+                        )
+                        .tag(4)
+                        
+                        PushNotificationsStepView(
+                            pushNotificationsEnabled: $pushNotificationsEnabled
+                        )
+                        .tag(5)
+                    }
+                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                    .animation(.easeInOut, value: currentStep)
+                    
+                    // Navigation buttons
+                    HStack(spacing: 16) {
+                        if currentStep > 0 {
+                            Button("Back") {
+                                withAnimation {
+                                    currentStep -= 1
+                                }
+                            }
+                            .buttonStyle(SecondaryButtonStyle())
+                        }
+                        
+                        Spacer()
+                        
+                        if currentStep < 5 {
+                            Button("Next") {
+                                withAnimation {
+                                    currentStep += 1
+                                }
+                            }
+                            .buttonStyle(PrimaryButtonStyle())
+                            .disabled(!canProceedToNext)
+                        } else {
+                            Button("Get Started") {
+                                completeOnboarding()
+                            }
+                            .buttonStyle(PrimaryButtonStyle())
                         }
                     }
-                    .padding(.bottom, 40)
-                }
-                .onTapGesture {
-                    // Dismiss keyboard when tapping outside text field
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 30)
                 }
             }
         }
         .navigationBarHidden(true)
     }
     
-    private func createProfile() {
-        let trimmedName = userName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else { return }
-        
-        // Create user profile
+    private var canProceedToNext: Bool {
+        switch currentStep {
+        case 0: return true
+        case 1: return !userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case 2: return true
+        case 3: return true
+        case 4: return !selectedTags.isEmpty
+        default: return true
+        }
+    }
+    
+    private func completeOnboarding() {
+        // Save all onboarding data
         let userProfile = coreDataManager.fetchOrCreateUserProfile()
-        userProfile.name = trimmedName
+        userProfile.name = userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        userProfile.notificationEnabled = pushNotificationsEnabled
+        userProfile.notificationStartTime = notificationStartTime
+        userProfile.notificationEndTime = notificationEndTime
+        userProfile.customTags = Array(selectedTags) as NSArray
+        
+        // Note: reminderInterval is not set during onboarding - it keeps the default 30 minutes
+        // The active days preset is stored separately and can be used for other features later
+        
         coreDataManager.saveUserProfile()
         
-        // Post notification to inform ContentView that profile was created
+        // Post notification to inform ContentView that onboarding was completed
         NotificationCenter.default.post(name: .profileCreated, object: nil)
+        
+        // Dismiss onboarding
+        dismiss()
     }
 }
 
-struct FeatureBadge: View {
-    let icon: String
-    let title: String
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(.blue)
-            
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
+struct PrimaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            )
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
+struct SecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.blue)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(.blue, lineWidth: 2)
+            )
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 
