@@ -6,6 +6,57 @@ class NotificationManager: ObservableObject {
     
     private init() {}
     
+    // MARK: - Notification Messages
+    
+    private let notificationMessages = [
+        "Time to Log Your Activity",
+        "Quick check-in time!",
+        "It's time to log your progress",
+        "Let's capture this moment",
+        "Time to check in with yourself",
+        "Reflect on your work",
+        "Time to log your thoughts",
+        "Check-in reminder",
+        "Logging time!",
+        "Reflection moment",
+        "Activity check-in",
+        "Progress update time",
+        "Mindful moment",
+        "Daily check-in",
+        "Activity log time"
+    ]
+    
+    private let notificationBodies = [
+        "What have you been working on?",
+        "How's it going?",
+        "What's your focus?",
+        "How productive are you?",
+        "What's been on your mind?",
+        "How do you feel?",
+        "What's your main activity?",
+        "How's your energy?",
+        "What have you accomplished?",
+        "What's your highlight?",
+        "How would you describe this time?",
+        "What's been important?",
+        "What's your current task?",
+        "How's your progress?",
+        "What's been your focus?"
+    ]
+    
+    private func getRandomNotificationSound() -> UNNotificationSound {
+        let sounds = [
+            UNNotificationSound.default,
+            UNNotificationSound.defaultCritical,
+            UNNotificationSound(named: UNNotificationSoundName("Tink")),
+            UNNotificationSound(named: UNNotificationSoundName("Chime")),
+            UNNotificationSound(named: UNNotificationSoundName("Glass"))
+        ]
+        
+        let randomIndex = Int.random(in: 0..<sounds.count)
+        return sounds[randomIndex] ?? UNNotificationSound.default
+    }
+    
     func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             DispatchQueue.main.async {
@@ -51,9 +102,9 @@ class NotificationManager: ObservableObject {
         }
         
         let content = UNMutableNotificationContent()
-        content.title = "Time to Log Your Activity"
-        content.body = "Take a moment to reflect on what you've been working on for the past 30 minutes."
-        content.sound = .default
+        content.title = notificationMessages.randomElement() ?? "Time to Log Your Activity"
+        content.body = notificationBodies.randomElement() ?? "Take a moment to reflect on what you've been working on for the past 30 minutes."
+        content.sound = getRandomNotificationSound()
         
         // Create trigger for the specific date
         let trigger = UNCalendarNotificationTrigger(
@@ -89,6 +140,171 @@ class NotificationManager: ObservableObject {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
     }
     
+    // MARK: - Enhanced Scheduling for Background Fetch
+    
+    func scheduleNotificationsForNextHours(hours: Int) {
+        let calendar = Calendar.current
+        let now = Date()
+        let userProfile = CoreDataManager.shared.getUserProfile()
+        
+        // Get notification time window
+        let startTime: Date
+        let endTime: Date
+        
+        if let savedStartTime = userProfile?.notificationStartTime,
+           let savedEndTime = userProfile?.notificationEndTime {
+            let today = calendar.startOfDay(for: now)
+            let startComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+            let endComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
+            
+            startTime = calendar.date(bySettingHour: startComponents.hour ?? 9, 
+                                    minute: startComponents.minute ?? 0, 
+                                    second: 0, 
+                                    of: today) ?? now
+            endTime = calendar.date(bySettingHour: endComponents.hour ?? 18, 
+                                  minute: endComponents.minute ?? 0, 
+                                  second: 0, 
+                                  of: today) ?? now
+        } else {
+            // Default times
+            let today = calendar.startOfDay(for: now)
+            startTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? now
+            endTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? now
+        }
+        
+        // Calculate the target end time (now + specified hours)
+        let targetEndTime = calendar.date(byAdding: .hour, value: hours, to: now) ?? now
+        let effectiveEndTime = min(endTime, targetEndTime)
+        
+        // Calculate all 30-minute intervals within the time window
+        var currentInterval = startTime
+        let intervalDuration: TimeInterval = 30 * 60 // 30 minutes
+        
+        var scheduledCount = 0
+        while currentInterval < effectiveEndTime {
+            // Only schedule if the interval is in the future
+            if currentInterval > now {
+                scheduleLoggingReminder(at: currentInterval)
+                scheduledCount += 1
+            }
+            currentInterval = currentInterval.addingTimeInterval(intervalDuration)
+        }
+        
+        print("📅 Background fetch: Scheduled \(scheduledCount) notifications for next \(hours) hours")
+    }
+    
+    func scheduleNotificationsForToday() {
+        let calendar = Calendar.current
+        let now = Date()
+        let userProfile = CoreDataManager.shared.getUserProfile()
+        
+        // Get notification time window
+        let startTime: Date
+        let endTime: Date
+        
+        if let savedStartTime = userProfile?.notificationStartTime,
+           let savedEndTime = userProfile?.notificationEndTime {
+            let today = calendar.startOfDay(for: now)
+            let startComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+            let endComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
+            
+            startTime = calendar.date(bySettingHour: startComponents.hour ?? 9, 
+                                    minute: startComponents.minute ?? 0, 
+                                    second: 0, 
+                                    of: today) ?? now
+            endTime = calendar.date(bySettingHour: endComponents.hour ?? 18, 
+                                  minute: endComponents.minute ?? 0, 
+                                  second: 0, 
+                                  of: today) ?? now
+        } else {
+            // Default times
+            let today = calendar.startOfDay(for: now)
+            startTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? now
+            endTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? now
+        }
+        
+        // Calculate all 30-minute intervals within the time window
+        var currentInterval = startTime
+        let intervalDuration: TimeInterval = 30 * 60 // 30 minutes
+        
+        var scheduledCount = 0
+        while currentInterval < endTime {
+            // Only schedule if the interval is in the future
+            if currentInterval > now {
+                scheduleLoggingReminder(at: currentInterval)
+                scheduledCount += 1
+            }
+            currentInterval = currentInterval.addingTimeInterval(intervalDuration)
+        }
+        
+        print("📅 Scheduled \(scheduledCount) notifications for today from \(startTime.formatted(date: .omitted, time: .shortened)) to \(endTime.formatted(date: .omitted, time: .shortened))")
+    }
+    
+    func scheduleNotificationsForNextDays(days: Int = 7) {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        var totalScheduled = 0
+        
+        for dayOffset in 0..<days {
+            guard let futureDate = calendar.date(byAdding: .day, value: dayOffset, to: now) else { continue }
+            
+            let userProfile = CoreDataManager.shared.getUserProfile()
+            
+            // Get notification time window for this day
+            let startTime: Date
+            let endTime: Date
+            
+            if let savedStartTime = userProfile?.notificationStartTime,
+               let savedEndTime = userProfile?.notificationEndTime {
+                let targetDay = calendar.startOfDay(for: futureDate)
+                let startComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+                let endComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
+                
+                startTime = calendar.date(bySettingHour: startComponents.hour ?? 9, 
+                                        minute: startComponents.minute ?? 0, 
+                                        second: 0, 
+                                        of: targetDay) ?? futureDate
+                endTime = calendar.date(bySettingHour: endComponents.hour ?? 18, 
+                                      minute: endComponents.minute ?? 0, 
+                                      second: 0, 
+                                      of: targetDay) ?? futureDate
+            } else {
+                // Default times
+                let targetDay = calendar.startOfDay(for: futureDate)
+                startTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: targetDay) ?? futureDate
+                endTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: targetDay) ?? futureDate
+            }
+            
+            // Calculate all 30-minute intervals within the time window
+            var currentInterval = startTime
+            let intervalDuration: TimeInterval = 30 * 60 // 30 minutes
+            
+            while currentInterval < endTime {
+                // Only schedule if the interval is in the future
+                if currentInterval > now {
+                    scheduleLoggingReminder(at: currentInterval)
+                    totalScheduled += 1
+                }
+                currentInterval = currentInterval.addingTimeInterval(intervalDuration)
+            }
+        }
+        
+        print("📅 Scheduled \(totalScheduled) notifications for next \(days) days")
+    }
+    
+    // MARK: - Settings Change Handling
+    
+    func rescheduleNotificationsForSettingsChange() {
+        // Cancel all existing notifications
+        cancelAllNotifications()
+        
+        // Reschedule with new settings
+        scheduleNotificationsForToday()
+        
+        print("🔄 Rescheduled notifications due to settings change")
+    }
+
     // MARK: - Logging Grace Period Validation
     
     func isWithinLoggingGracePeriod(for targetTime: Date) -> Bool {
