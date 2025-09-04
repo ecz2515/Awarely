@@ -2,7 +2,7 @@
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22522" systemVersion="23C71" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="YES" userDefinedModelVersionIdentifier="">
     <entity name="PersistentLogEntry" representedClassName="PersistentLogEntry" syncable="YES" codeGenerationType="class">
         <attribute name="id" optional="NO" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
-        <attribute name="tags" optional="YES" attributeType="Transformable" valueTransformerName="NSSecureUnarchiveFromData" customClassName="[String]"/>
+        <attribute name="tags" optional="YES" attributeType="Transformable" valueTransformerName="NSSecureUnarchiveFromData"/>
         <attribute name="text" optional="NO" attributeType="String" defaultValueString=""/>
         <attribute name="timePeriodEnd" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="timePeriodStart" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
@@ -11,7 +11,7 @@
     </entity>
     <entity name="UserProfile" representedClassName="UserProfile" syncable="YES" codeGenerationType="class">
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
-        <attribute name="customTags" optional="YES" attributeType="Transformable" valueTransformerName="NSSecureUnarchiveFromData" customClassName="[String]"/>
+        <attribute name="customTags" optional="YES" attributeType="Transformable" valueTransformerName="NSSecureUnarchiveFromData"/>
         <attribute name="id" optional="NO" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <attribute name="isPremiumUser" optional="NO" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="loggingGracePeriod" optional="NO" attributeType="Integer 32" defaultValueString="5" usesScalarValueType="YES"/>

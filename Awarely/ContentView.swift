@@ -152,7 +152,7 @@ struct ContentView: View {
         if let userProfile = coreDataManager.getUserProfile() {
             notificationEnabled = userProfile.notificationEnabled
             reminderInterval = userProfile.reminderInterval
-            customTags = userProfile.customTags ?? ["Read a book", "Practice violin", "Work on startup", "Journal", "Practice German", "Exercise", "Practice conducting", "Take multivitamins", "Meditate", "Work", "Work meetings"]
+            customTags = (userProfile.customTags as? [String]) ?? ["Read a book", "Practice violin", "Work on startup", "Journal", "Practice German", "Exercise", "Practice conducting", "Take multivitamins", "Meditate", "Work", "Work meetings"]
         }
         
         // Only load sample data if this is the first launch (no user profile exists)

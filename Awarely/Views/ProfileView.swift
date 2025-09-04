@@ -18,6 +18,12 @@ struct ProfileView: View {
     @State private var gracePeriod: Int = 5
     @EnvironmentObject var coreDataManager: CoreDataManager
     
+    // Time picker states
+    @State private var showingStartTimePicker = false
+    @State private var showingEndTimePicker = false
+    @State private var tempStartTime = Date()
+    @State private var tempEndTime = Date()
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -71,6 +77,28 @@ struct ProfileView: View {
                 gracePeriod = maxGracePeriod
             }
             saveSettingsToCoreData()
+        }
+        .sheet(isPresented: $showingStartTimePicker) {
+            TimePickerSheet(
+                title: "Start Time",
+                selectedTime: $tempStartTime,
+                onSave: {
+                    let userProfile = coreDataManager.fetchOrCreateUserProfile()
+                    userProfile.notificationStartTime = tempStartTime
+                    coreDataManager.saveUserProfile()
+                }
+            )
+        }
+        .sheet(isPresented: $showingEndTimePicker) {
+            TimePickerSheet(
+                title: "End Time",
+                selectedTime: $tempEndTime,
+                onSave: {
+                    let userProfile = coreDataManager.fetchOrCreateUserProfile()
+                    userProfile.notificationEndTime = tempEndTime
+                    coreDataManager.saveUserProfile()
+                }
+            )
         }
     }
     
@@ -126,9 +154,9 @@ struct ProfileView: View {
                         Text("Push notifications")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(.primary)
-                        Text("Reminders to log your activities")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        // Text("Reminders to log your activities")
+                        //     .font(.caption)
+                        //     .foregroundStyle(.secondary)
                     }
                     
                     Spacer()
@@ -221,7 +249,8 @@ struct ProfileView: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        showStartTimePicker()
+                        tempStartTime = getNotificationStartTime()
+                        showingStartTimePicker = true
                     }
                     
                     // Notification End Time
@@ -250,7 +279,37 @@ struct ProfileView: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        showEndTimePicker()
+                        tempEndTime = getNotificationEndTime()
+                        showingEndTimePicker = true
+                    }
+                    
+                    // Vacation Mode
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text("Vacation Mode")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                
+                                Image(systemName: "crown.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                            }
+                            Text("Pause all reminders and logging")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .opacity(0.7)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        showComingSoonAlert("Vacation Mode")
                     }
                 }
             }
@@ -279,7 +338,7 @@ struct ProfileView: View {
                         Text("Early Grace Period")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(.primary)
-                        Text("How many minutes beforehand you can log the current time interval")
+                        Text("How many minutes beforehand you can log")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         
@@ -350,7 +409,7 @@ struct ProfileView: View {
                                 .font(.caption2)
                                 .foregroundStyle(.orange)
                         }
-                        Text("Automatically add your logged activities to your calendar")
+                        Text("Automatically add logs to calendar")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -627,69 +686,7 @@ struct ProfileView: View {
         }
     }
     
-    private func showStartTimePicker() {
-        let alert = UIAlertController(title: "Start Time", message: "Choose when to start sending reminders", preferredStyle: .actionSheet)
-        
-        let times = [
-            (6, "6:00 AM"),
-            (7, "7:00 AM"),
-            (8, "8:00 AM"),
-            (9, "9:00 AM"),
-            (10, "10:00 AM"),
-            (11, "11:00 AM"),
-            (12, "12:00 PM")
-        ]
-        
-        for (hour, label) in times {
-            alert.addAction(UIAlertAction(title: label, style: .default) { _ in
-                let calendar = Calendar.current
-                let today = calendar.startOfDay(for: Date())
-                let newTime = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: today) ?? Date()
-                let userProfile = self.coreDataManager.fetchOrCreateUserProfile()
-                userProfile.notificationStartTime = newTime
-                self.coreDataManager.saveUserProfile()
-            })
-        }
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first {
-            window.rootViewController?.present(alert, animated: true)
-        }
-    }
-    
-    private func showEndTimePicker() {
-        let alert = UIAlertController(title: "End Time", message: "Choose when to stop sending reminders", preferredStyle: .actionSheet)
-        
-        let times = [
-            (17, "5:00 PM"),
-            (18, "6:00 PM"),
-            (19, "7:00 PM"),
-            (20, "8:00 PM"),
-            (21, "9:00 PM"),
-            (22, "10:00 PM"),
-            (23, "11:00 PM")
-        ]
-        
-        for (hour, label) in times {
-            alert.addAction(UIAlertAction(title: label, style: .default) { _ in
-                let calendar = Calendar.current
-                let today = calendar.startOfDay(for: Date())
-                let newTime = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: today) ?? Date()
-                let userProfile = self.coreDataManager.fetchOrCreateUserProfile()
-                userProfile.notificationEndTime = newTime
-                self.coreDataManager.saveUserProfile()
-            })
-        }
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first {
-            window.rootViewController?.present(alert, animated: true)
-        }
-    }
+
     
     private func showComingSoonAlert(_ featureName: String) {
         let alert = UIAlertController(
@@ -726,5 +723,55 @@ struct ProfileView: View {
         let userProfile = coreDataManager.fetchOrCreateUserProfile()
         userProfile.loggingGracePeriod = Int32(gracePeriod)
         coreDataManager.saveUserProfile()
+    }
+}
+
+// MARK: - TimePickerSheet
+
+struct TimePickerSheet: View {
+    let title: String
+    @Binding var selectedTime: Date
+    let onSave: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                DatePicker(
+                    "Time",
+                    selection: $selectedTime,
+                    displayedComponents: .hourAndMinute
+                )
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        onSave()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .onAppear {
+            UIDatePicker.appearance().minuteInterval = 30
+        }
+        .onDisappear {
+            UIDatePicker.appearance().minuteInterval = 1
+        }
     }
 }

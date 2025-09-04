@@ -43,7 +43,7 @@ class CoreDataManager: ObservableObject {
                 newProfile.notificationEnabled = true
                 newProfile.reminderInterval = 30 * 60
                 newProfile.loggingGracePeriod = 5
-                newProfile.customTags = ["Read a book", "Practice violin", "Work on startup", "Journal", "Practice German", "Exercise", "Practice conducting", "Take multivitamins", "Meditate", "Work", "Work meetings"]
+                newProfile.customTags = ["Read a book", "Practice violin", "Work on startup", "Journal", "Practice German", "Exercise", "Practice conducting", "Take multivitamins", "Meditate", "Work", "Work meetings"] as NSArray
                 newProfile.isPremiumUser = false
                 
                 // Set default notification times
@@ -86,7 +86,7 @@ class CoreDataManager: ObservableObject {
                 LogEntry(
                     id: entry.id ?? UUID(),
                     text: entry.text ?? "",
-                    tags: entry.tags ?? [],
+                    tags: (entry.tags as? [String]) ?? [],
                     timestamp: entry.timestamp ?? Date(),
                     timePeriodStart: entry.timePeriodStart ?? Date(),
                     timePeriodEnd: entry.timePeriodEnd ?? Date()
@@ -110,7 +110,7 @@ class CoreDataManager: ObservableObject {
                 let persistentEntry = PersistentLogEntry(context: viewContext)
                 persistentEntry.id = entry.id
                 persistentEntry.text = entry.text
-                persistentEntry.tags = entry.tags
+                persistentEntry.tags = entry.tags as NSArray
                 persistentEntry.timestamp = entry.timestamp
                 persistentEntry.timePeriodStart = entry.timePeriodStart
                 persistentEntry.timePeriodEnd = entry.timePeriodEnd
@@ -135,7 +135,7 @@ class CoreDataManager: ObservableObject {
             let results = try viewContext.fetch(request)
             if let existingEntry = results.first {
                 existingEntry.text = entry.text
-                existingEntry.tags = entry.tags
+                existingEntry.tags = entry.tags as NSArray
                 existingEntry.timestamp = entry.timestamp
                 existingEntry.timePeriodStart = entry.timePeriodStart
                 existingEntry.timePeriodEnd = entry.timePeriodEnd
@@ -188,7 +188,7 @@ class CoreDataManager: ObservableObject {
     
     func updateCustomTags(_ tags: [String]) {
         let userProfile = fetchOrCreateUserProfile()
-        userProfile.customTags = tags
+        userProfile.customTags = tags as NSArray
         saveContext()
     }
     

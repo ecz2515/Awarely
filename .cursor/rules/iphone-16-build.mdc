@@ -1,0 +1,26 @@
+# iPhone 16 Build Configuration
+
+This project should always target iPhone 16 for builds and development. The main configuration is in [Awarely.xcodeproj/project.pbxproj](mdc:Awarely.xcodeproj/project.pbxproj).
+
+## Key Settings to Maintain:
+- **Deployment Target**: iOS 18.5 (supports iPhone 16)
+- **Targeted Device Family**: "1" (iPhone only) - currently set to "1,2" (iPhone + iPad)
+- **Platform**: iOS
+
+## Build Commands:
+When building or running the project, always use iPhone 16 simulator:
+```bash
+# Build for iPhone 16
+xcodebuild -project Awarely.xcodeproj -scheme Awarely -destination 'platform=iOS Simulator,name=iPhone 16'
+
+# Run in iPhone 16 simulator
+xcodebuild -project Awarely.xcodeproj -scheme Awarely -destination 'platform=iOS Simulator,name=iPhone 16' build
+```
+
+## Xcode Configuration:
+- Set the active scheme to target iPhone 16
+- Ensure the deployment target remains at iOS 18.5 or higher
+- Consider updating TARGETED_DEVICE_FAMILY to "1" for iPhone-only builds
+
+## Testing:
+All UI tests and development should be conducted on iPhone 16 simulator to ensure proper layout and functionality for the target device.
