@@ -311,7 +311,7 @@ struct LogView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(.bottom, 20)
+        .padding(.bottom, 32)
     }
     
     private var customizeTagsSection: some View {
@@ -550,24 +550,34 @@ struct CustomTagsView: View {
         NavigationStack {
             VStack(spacing: 20) {
                 // Add new tag section
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 16) {
                     Text("Add New Tag")
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.primary)
                     
                     HStack(spacing: 12) {
                         TextField("Enter tag name...", text: $newTag)
-                            .textFieldStyle(.roundedBorder)
                             .focused($isTextFieldFocused)
                             .onSubmit {
                                 addTag()
                             }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .frame(height: 44)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(.systemBackground))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .strokeBorder(Color(.systemGray4), lineWidth: 1)
+                                    )
+                            )
                         
                         Button(action: addTag) {
                             Text("Add")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.white)
-                                .frame(minWidth: 80, minHeight: 44)
+                                .frame(width: 80, height: 44)
                                 .background(
                                     newTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                                     ? Color.gray
@@ -579,8 +589,6 @@ struct CustomTagsView: View {
                         .buttonStyle(PlainButtonStyle())
                     }
                 }
-                .padding(20)
-                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, 20)
                 
                 // Tags list
