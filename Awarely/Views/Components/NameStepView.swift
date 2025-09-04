@@ -19,31 +19,30 @@ struct NameStepView: View {
                         .font(.largeTitle.weight(.bold))
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
-                    
-                    Text("We'll use this to personalize your experience")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
                 }
             }
             
             // Name Input
             VStack(spacing: 20) {
                 TextField("Enter your name", text: $userName)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.title2)
+                    .font(.title2.weight(.medium))
                     .multilineTextAlignment(.center)
                     .focused($isTextFieldFocused)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color(.systemGray4), lineWidth: 1)
+                            )
+                    )
                     .onAppear {
                         isTextFieldFocused = true
                     }
-                
-                Text("This helps us make your reminders feel more personal")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
             }
-            .padding(.horizontal, 40)
             
             Spacer()
         }
