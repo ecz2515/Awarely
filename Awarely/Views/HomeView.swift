@@ -93,6 +93,31 @@ struct HomeView: View {
     private var timerStatusSection: some View {
         let hasCurrentEntry = intervalTimer.hasEntryForCurrentInterval(entries: entries)
         let hasPreviousEntry = intervalTimer.hasEntryForPreviousInterval(entries: entries)
+        let isPastEndTime = intervalTimer.isPastLoggingEndTime()
+        
+        // If we're past the logging end time, show "done for the day" status
+        if isPastEndTime {
+            return AnyView(
+                HStack {
+                                    HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    
+                    Text("Done for the day!")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                }
+                
+                Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.green.opacity(0.1))
+                )
+            )
+        }
         
         // If we're in late grace period but there's already a previous entry, show timer for next interval
         // Otherwise, show timer if we're in logging window or have current entry
@@ -101,31 +126,33 @@ struct HomeView: View {
                              (intervalTimer.isLoggingWindow && hasCurrentEntry)
         
         // During late grace period with no previous entry, show green "ready to log"
-        let isLateGraceWithNoEntry = intervalTimer.isLateGracePeriod && !hasPreviousEntry
+        _ = intervalTimer.isLateGracePeriod && !hasPreviousEntry
         
-        return HStack {
+        return AnyView(
             HStack {
-                Image(systemName: shouldShowTimer ? "timer" : "checkmark.circle.fill")
-                    .foregroundStyle(shouldShowTimer ? .orange : .green)
+                HStack {
+                    Image(systemName: shouldShowTimer ? "timer" : "checkmark.circle.fill")
+                        .foregroundStyle(shouldShowTimer ? .orange : .green)
+                    
+                    Text(shouldShowTimer ? "\(intervalTimer.hasEntryForCurrentInterval(entries: entries) ? intervalTimer.formatTimeUntilNextIntervalEnd() : intervalTimer.formatTimeRemaining()) until next check-in" : "Ready to log your activity")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                }
                 
-                Text(shouldShowTimer ? "\(intervalTimer.hasEntryForCurrentInterval(entries: entries) ? intervalTimer.formatTimeUntilNextIntervalEnd() : intervalTimer.formatTimeRemaining()) until next check-in" : "Ready to log your activity")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                Spacer()
+                
+                if shouldShowTimer {
+                    Text((intervalTimer.hasEntryForCurrentInterval(entries: entries) ? intervalTimer.nextIntervalEndDate : intervalTimer.getCurrentIntervalEnd()).formatted(date: .omitted, time: .shortened))
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.orange)
+                }
             }
-            
-            Spacer()
-            
-            if shouldShowTimer {
-                Text((intervalTimer.hasEntryForCurrentInterval(entries: entries) ? intervalTimer.nextIntervalEndDate : intervalTimer.getCurrentIntervalEnd()).formatted(date: .omitted, time: .shortened))
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.orange)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(shouldShowTimer ? Color.orange.opacity(0.1) : Color.green.opacity(0.1))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(shouldShowTimer ? Color.orange.opacity(0.1) : Color.green.opacity(0.1))
+            )
         )
     }
     
