@@ -36,7 +36,7 @@ struct ContentView: View {
     @State private var entries: [LogEntry] = []
     @State private var newEntry: String = ""
     @State private var selectedTags: Set<String> = []
-    @State private var customTags: [String] = ["Read a book", "Practice violin", "Work on startup", "Journal", "Practice German", "Exercise", "Practice conducting", "Take multivitamins", "Meditate", "Work", "Work meetings"]
+    @State private var customTags: [String] = ["Read", "Practice", "Work", "Journal", "Exercise", "Meditate", "Meetings"]
     @FocusState private var isFieldFocused: Bool
     @State private var notificationEnabled = true
     @State private var reminderInterval: TimeInterval = 30 * 60 // Default to 30 minutes

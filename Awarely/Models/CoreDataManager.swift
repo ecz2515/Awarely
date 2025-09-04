@@ -43,7 +43,7 @@ class CoreDataManager: ObservableObject {
                 newProfile.notificationEnabled = true
                 newProfile.reminderInterval = 30 * 60
                 newProfile.loggingGracePeriod = 5
-                newProfile.customTags = ["Read a book", "Practice violin", "Work on startup", "Journal", "Practice German", "Exercise", "Practice conducting", "Take multivitamins", "Meditate", "Work", "Work meetings"] as NSArray
+                newProfile.customTags = ["Read", "Practice", "Work", "Journal", "Exercise", "Meditate", "Meetings"] as NSArray
                 newProfile.isPremiumUser = false
                 
                 // Set default notification times
