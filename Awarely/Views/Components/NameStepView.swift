@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NameStepView: View {
     @Binding var userName: String
+    @Binding var textFieldBorderFlash: Bool
     @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
@@ -36,7 +37,10 @@ struct NameStepView: View {
                             .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color(.systemGray4), lineWidth: 1)
+                                    .stroke(
+                                        textFieldBorderFlash ? Color.red : Color(.systemGray4), 
+                                        lineWidth: textFieldBorderFlash ? 2 : 1
+                                    )
                             )
                     )
                     .onAppear {
@@ -54,5 +58,5 @@ struct NameStepView: View {
 }
 
 #Preview {
-    NameStepView(userName: .constant(""))
+    NameStepView(userName: .constant(""), textFieldBorderFlash: .constant(false))
 }

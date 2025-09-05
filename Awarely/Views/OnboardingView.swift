@@ -8,6 +8,8 @@ struct OnboardingView: View {
     @State private var notificationEndTime = Calendar.current.date(from: DateComponents(hour: 18, minute: 0)) ?? Date()
     @State private var selectedTags: Set<String> = []
     @State private var pushNotificationsEnabled = false
+    @State private var textFieldBorderFlash = false
+    @State private var buttonWiggle = false
     
     @ObservedObject var coreDataManager = CoreDataManager.shared
     @Environment(\.dismiss) private var dismiss
@@ -39,34 +41,32 @@ struct OnboardingView: View {
                         .padding(.top, 10)
                     
                     // Step content
-                    TabView(selection: $currentStep) {
-                        WelcomeStepView()
-                            .tag(0)
-                        
-                        NameStepView(userName: $userName)
-                            .tag(1)
-                        
-                        ActiveDaysStepView(activeDaysPreset: $activeDaysPreset)
-                            .tag(2)
-                        
-                        NotificationWindowStepView(
-                            startTime: $notificationStartTime,
-                            endTime: $notificationEndTime
-                        )
-                        .tag(3)
-                        
-                        TagsStepView(
-                            selectedTags: $selectedTags,
-                            availableTags: availableTags
-                        )
-                        .tag(4)
-                        
-                        PushNotificationsStepView(
-                            pushNotificationsEnabled: $pushNotificationsEnabled
-                        )
-                        .tag(5)
+                    Group {
+                        switch currentStep {
+                        case 0:
+                            WelcomeStepView()
+                        case 1:
+                            NameStepView(userName: $userName, textFieldBorderFlash: $textFieldBorderFlash)
+                        case 2:
+                            ActiveDaysStepView(activeDaysPreset: $activeDaysPreset)
+                        case 3:
+                            NotificationWindowStepView(
+                                startTime: $notificationStartTime,
+                                endTime: $notificationEndTime
+                            )
+                        case 4:
+                            TagsStepView(
+                                selectedTags: $selectedTags,
+                                availableTags: availableTags
+                            )
+                        case 5:
+                            PushNotificationsStepView(
+                                pushNotificationsEnabled: $pushNotificationsEnabled
+                            )
+                        default:
+                            WelcomeStepView()
+                        }
                     }
-                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
                     .animation(.easeInOut, value: currentStep)
                     
                     // Navigation buttons
@@ -83,12 +83,18 @@ struct OnboardingView: View {
                             
                             if currentStep < 5 {
                                 Button("Next") {
-                                    withAnimation {
-                                        currentStep += 1
+                                    if canProceedToNext {
+                                        withAnimation {
+                                            currentStep += 1
+                                        }
+                                    } else {
+                                        // Show feedback for invalid input
+                                        handleInvalidInput()
                                     }
                                 }
                                 .buttonStyle(PrimaryButtonStyle())
-                                .disabled(!canProceedToNext)
+                                .scaleEffect(buttonWiggle ? 0.95 : 1.0)
+                                .animation(.easeInOut(duration: 0.1), value: buttonWiggle)
                             } else {
                                 Button("Get Started") {
                                     completeOnboarding()
@@ -99,12 +105,18 @@ struct OnboardingView: View {
                             // Center the Next button on the first step
                             if currentStep < 5 {
                                 Button("Next") {
-                                    withAnimation {
-                                        currentStep += 1
+                                    if canProceedToNext {
+                                        withAnimation {
+                                            currentStep += 1
+                                        }
+                                    } else {
+                                        // Show feedback for invalid input
+                                        handleInvalidInput()
                                     }
                                 }
                                 .buttonStyle(PrimaryButtonStyle())
-                                .disabled(!canProceedToNext)
+                                .scaleEffect(buttonWiggle ? 0.95 : 1.0)
+                                .animation(.easeInOut(duration: 0.1), value: buttonWiggle)
                             } else {
                                 Button("Get Started") {
                                     completeOnboarding()
@@ -129,6 +141,26 @@ struct OnboardingView: View {
         case 3: return true
         case 4: return !selectedTags.isEmpty
         default: return true
+        }
+    }
+    
+    private func handleInvalidInput() {
+        // Trigger wiggle animation
+        withAnimation(.easeInOut(duration: 0.1).repeatCount(3, autoreverses: true)) {
+            buttonWiggle = true
+        }
+        
+        // Flash text field border for name step
+        if currentStep == 1 {
+            withAnimation(.easeInOut(duration: 0.1).repeatCount(3, autoreverses: true)) {
+                textFieldBorderFlash = true
+            }
+        }
+        
+        // Reset animations
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            buttonWiggle = false
+            textFieldBorderFlash = false
         }
     }
     
