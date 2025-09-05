@@ -15,7 +15,7 @@ struct NotificationWindowStepView: View {
                     .foregroundStyle(.orange)
                 
                 VStack(spacing: 8) {
-                    Text("Daily reminder window")
+                    Text("Reminder window")
                         .font(.largeTitle.weight(.bold))
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
@@ -26,6 +26,7 @@ struct NotificationWindowStepView: View {
                         .multilineTextAlignment(.center)
                 }
             }
+            .padding(.horizontal, 32)
             
             // Compact Time Pickers
             VStack(spacing: 30) {
@@ -49,11 +50,10 @@ struct NotificationWindowStepView: View {
                         .labelsHidden()
                 }
             }
-            .padding(.horizontal, 40)
+            .padding(.horizontal, 32)
             
             Spacer()
         }
-        .padding(.horizontal, 20)
         .onAppear {
             // Set minute interval to 30 minutes (only show :00 and :30)
             UIDatePicker.appearance().minuteInterval = 30

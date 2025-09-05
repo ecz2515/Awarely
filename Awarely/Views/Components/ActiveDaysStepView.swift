@@ -14,17 +14,18 @@ struct ActiveDaysStepView: View {
                     .foregroundStyle(.green)
                 
                 VStack(spacing: 8) {
-                    Text("When are you active?")
+                    Text("Days active")
                         .font(.largeTitle.weight(.bold))
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
                     
-                    Text("Choose when you'd like to receive reminders")
+                    Text("Choose which days you'd like to log your productivity")
                         .font(.title3)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
             }
+            .padding(.horizontal, 32)
             
             // Options
             VStack(spacing: 16) {
@@ -69,11 +70,10 @@ struct ActiveDaysStepView: View {
                     .buttonStyle(PlainButtonStyle())
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 32)
             
             Spacer()
         }
-        .padding(.horizontal, 20)
     }
 }
 

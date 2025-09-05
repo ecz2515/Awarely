@@ -4,6 +4,7 @@ struct NameStepView: View {
     @Binding var userName: String
     @Binding var textFieldBorderFlash: Bool
     @FocusState private var isTextFieldFocused: Bool
+    let onReturnPressed: () -> Void
     
     var body: some View {
         VStack(spacing: 40) {
@@ -22,6 +23,7 @@ struct NameStepView: View {
                         .multilineTextAlignment(.center)
                 }
             }
+            .padding(.horizontal, 32)
             
             // Name Input
             VStack(spacing: 20) {
@@ -29,6 +31,9 @@ struct NameStepView: View {
                     .font(.title2.weight(.medium))
                     .multilineTextAlignment(.center)
                     .focused($isTextFieldFocused)
+                    .onSubmit {
+                        onReturnPressed()
+                    }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 16)
                     .background(
@@ -47,10 +52,10 @@ struct NameStepView: View {
                         isTextFieldFocused = true
                     }
             }
+            .padding(.horizontal, 32)
             
             Spacer()
         }
-        .padding(.horizontal, 20)
         .onTapGesture {
             isTextFieldFocused = false
         }
@@ -58,5 +63,5 @@ struct NameStepView: View {
 }
 
 #Preview {
-    NameStepView(userName: .constant(""), textFieldBorderFlash: .constant(false))
+    NameStepView(userName: .constant(""), textFieldBorderFlash: .constant(false), onReturnPressed: {})
 }

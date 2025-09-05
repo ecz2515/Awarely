@@ -49,11 +49,11 @@ struct WelcomeStepView: View {
                 FeatureRow(icon: "clock", title: "Gentle Reminders", description: "Check in every 30 minutes")
                 FeatureRow(icon: "list.bullet", title: "Activity Logging", description: "Track what matters to you")
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 32)
             
             Spacer()
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 32)
     }
 }
 

@@ -14,10 +14,6 @@ struct OnboardingView: View {
     @ObservedObject var coreDataManager = CoreDataManager.shared
     @Environment(\.dismiss) private var dismiss
     
-    private let availableTags = [
-        "Read", "Exercise", "Meditate", "Work", "Journal", 
-        "Practice", "Study", "Walk", "Cook", "Clean"
-    ]
     
     var body: some View {
         NavigationStack {
@@ -46,7 +42,19 @@ struct OnboardingView: View {
                         case 0:
                             WelcomeStepView()
                         case 1:
-                            NameStepView(userName: $userName, textFieldBorderFlash: $textFieldBorderFlash)
+                            NameStepView(
+                                userName: $userName, 
+                                textFieldBorderFlash: $textFieldBorderFlash,
+                                onReturnPressed: {
+                                    if canProceedToNext {
+                                        withAnimation {
+                                            currentStep += 1
+                                        }
+                                    } else {
+                                        handleInvalidInput()
+                                    }
+                                }
+                            )
                         case 2:
                             ActiveDaysStepView(activeDaysPreset: $activeDaysPreset)
                         case 3:
@@ -57,7 +65,16 @@ struct OnboardingView: View {
                         case 4:
                             TagsStepView(
                                 selectedTags: $selectedTags,
-                                availableTags: availableTags
+                                textFieldBorderFlash: $textFieldBorderFlash,
+                                onReturnPressed: {
+                                    if canProceedToNext {
+                                        withAnimation {
+                                            currentStep += 1
+                                        }
+                                    } else {
+                                        handleInvalidInput()
+                                    }
+                                }
                             )
                         case 5:
                             PushNotificationsStepView(
@@ -70,7 +87,7 @@ struct OnboardingView: View {
                     .animation(.easeInOut, value: currentStep)
                     
                     // Navigation buttons
-                    HStack(spacing: 16) {
+                    HStack(spacing: 12) {
                         if currentStep > 0 {
                             Button("Back") {
                                 withAnimation {
@@ -78,8 +95,6 @@ struct OnboardingView: View {
                                 }
                             }
                             .buttonStyle(SecondaryButtonStyle())
-                            
-                            Spacer()
                             
                             if currentStep < 5 {
                                 Button("Next") {
@@ -150,8 +165,8 @@ struct OnboardingView: View {
             buttonWiggle = true
         }
         
-        // Flash text field border for name step
-        if currentStep == 1 {
+        // Flash text field border for name step and tags step
+        if currentStep == 1 || currentStep == 4 {
             withAnimation(.easeInOut(duration: 0.1).repeatCount(3, autoreverses: true)) {
                 textFieldBorderFlash = true
             }

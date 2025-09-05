@@ -16,25 +16,25 @@ struct PushNotificationsStepView: View {
                     .foregroundStyle(.red)
                 
                 VStack(spacing: 8) {
-                    Text("Stay mindful")
+                    Text("Notifications")
                         .font(.largeTitle.weight(.bold))
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
                     
-                    Text("Get gentle reminders to check in with yourself")
+                    Text("Get gentle reminders to check in")
                         .font(.title3)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
             }
+            .padding(.horizontal, 32)
             
             // Benefits
             VStack(spacing: 20) {
                 BenefitRow(icon: "clock.badge.checkmark", text: "Timely reminders throughout your day")
-                BenefitRow(icon: "brain.head.profile", text: "Build consistent mindfulness habits")
-                BenefitRow(icon: "chart.line.uptrend.xyaxis", text: "Track your progress over time")
+                BenefitRow(icon: "brain.head.profile", text: "Consistently log your productivity")
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 32)
             
             // Permission Button
             VStack(spacing: 16) {
@@ -66,11 +66,10 @@ struct PushNotificationsStepView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
-            .padding(.horizontal, 40)
+            .padding(.horizontal, 32)
             
             Spacer()
         }
-        .padding(.horizontal, 20)
         .alert("Notification Permission", isPresented: $showingPermissionAlert) {
             Button("Settings") {
                 if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
