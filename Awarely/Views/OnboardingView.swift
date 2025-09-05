@@ -49,9 +49,7 @@ struct OnboardingView: View {
                                 isKeyboardVisible: $isKeyboardVisible,
                                 onReturnPressed: {
                                     if canProceedToNext {
-                                        withAnimation {
-                                            currentStep += 1
-                                        }
+                                        currentStep += 1
                                     } else {
                                         handleInvalidInput()
                                     }
@@ -71,9 +69,7 @@ struct OnboardingView: View {
                                 isKeyboardVisible: $isKeyboardVisible,
                                 onReturnPressed: {
                                     if canProceedToNext {
-                                        withAnimation {
-                                            currentStep += 1
-                                        }
+                                        currentStep += 1
                                     } else {
                                         handleInvalidInput()
                                     }
@@ -87,25 +83,20 @@ struct OnboardingView: View {
                             WelcomeStepView()
                         }
                     }
-                    .animation(.easeInOut, value: currentStep)
                     
                     // Navigation buttons - hide when keyboard is visible on name step or tags step
                     if !((currentStep == 1 || currentStep == 4) && isKeyboardVisible) {
                         HStack(spacing: 12) {
                         if currentStep > 0 {
                             Button("Back") {
-                                withAnimation {
-                                    currentStep -= 1
-                                }
+                                currentStep -= 1
                             }
                             .buttonStyle(SecondaryButtonStyle())
                             
                             if currentStep < 5 {
                                 Button("Next") {
                                     if canProceedToNext {
-                                        withAnimation {
-                                            currentStep += 1
-                                        }
+                                        currentStep += 1
                                     } else {
                                         // Show feedback for invalid input
                                         handleInvalidInput()
@@ -125,9 +116,7 @@ struct OnboardingView: View {
                             if currentStep < 5 {
                                 Button("Next") {
                                     if canProceedToNext {
-                                        withAnimation {
-                                            currentStep += 1
-                                        }
+                                        currentStep += 1
                                     } else {
                                         // Show feedback for invalid input
                                         handleInvalidInput()
