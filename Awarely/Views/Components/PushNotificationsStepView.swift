@@ -38,12 +38,12 @@ struct PushNotificationsStepView: View {
             
             // Permission Button
             VStack(spacing: 16) {
-                Button(action: requestNotificationPermission) {
+                Button(action: pushNotificationsEnabled ? {} : requestNotificationPermission) {
                     HStack {
-                        Image(systemName: "bell.badge")
+                        Image(systemName: pushNotificationsEnabled ? "bell.badge.fill" : "bell.badge")
                             .font(.headline)
                         
-                        Text("Allow Notifications")
+                        Text(pushNotificationsEnabled ? "Notifications Enabled" : "Allow Notifications")
                             .font(.headline.weight(.semibold))
                     }
                     .foregroundStyle(.white)
@@ -53,15 +53,16 @@ struct PushNotificationsStepView: View {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .fill(
                                 LinearGradient(
-                                    colors: [.red, .orange],
+                                    colors: pushNotificationsEnabled ? [.green, .mint] : [.red, .orange],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
                     )
                 }
+                .disabled(pushNotificationsEnabled)
                 
-                Text("You can change this later in Settings")
+                Text(pushNotificationsEnabled ? "Notifications are enabled for this app" : "You can change this later in Settings")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -80,15 +81,50 @@ struct PushNotificationsStepView: View {
         } message: {
             Text("Please enable notifications in Settings to receive mindful reminders.")
         }
+        .onAppear {
+            checkCurrentNotificationStatus()
+        }
+    }
+    
+    private func checkCurrentNotificationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                print("📱 Current notification settings:")
+                print("   Authorization Status: \(settings.authorizationStatus.rawValue)")
+                print("   Alert Setting: \(settings.alertSetting.rawValue)")
+                print("   Badge Setting: \(settings.badgeSetting.rawValue)")
+                print("   Sound Setting: \(settings.soundSetting.rawValue)")
+                
+                // Update the binding based on current status
+                switch settings.authorizationStatus {
+                case .authorized:
+                    pushNotificationsEnabled = true
+                case .denied, .notDetermined, .provisional, .ephemeral:
+                    pushNotificationsEnabled = false
+                @unknown default:
+                    pushNotificationsEnabled = false
+                }
+            }
+        }
     }
     
     private func requestNotificationPermission() {
+        print("🔔 Requesting notification permission...")
+        
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             DispatchQueue.main.async {
+                print("🔔 Permission result: granted=\(granted), error=\(String(describing: error))")
+                
                 if granted {
                     pushNotificationsEnabled = true
+                    print("✅ Notification permission granted")
                 } else {
                     pushNotificationsEnabled = false
+                    if let error = error {
+                        print("❌ Notification permission error: \(error)")
+                    } else {
+                        print("❌ Notification permission denied by user")
+                    }
                     showingPermissionAlert = true
                 }
             }
