@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TagsStepView: View {
-    @Binding var selectedTags: Set<String>
+    @Binding var selectedTags: [String]
     @State private var newTag = ""
     @FocusState private var isTextFieldFocused: Bool
     @Binding var textFieldBorderFlash: Bool
@@ -96,7 +96,7 @@ struct TagsStepView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 
                                 FlowLayout(spacing: 8) {
-                                    ForEach(Array(selectedTags), id: \.self) { tag in
+                                    ForEach(selectedTags, id: \.self) { tag in
                                         HStack(spacing: 6) {
                                             Text(tag)
                                                 .font(.subheadline.weight(.medium))
@@ -147,7 +147,7 @@ struct TagsStepView: View {
         guard !trimmed.isEmpty && !selectedTags.contains(trimmed) else { return }
         
         withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-            selectedTags.insert(trimmed)
+            selectedTags.insert(trimmed, at: 0) // Insert at the beginning
         }
         
         newTag = ""
@@ -160,7 +160,7 @@ struct TagsStepView: View {
     
     private func removeTag(_ tag: String) {
         withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-            selectedTags.remove(tag)
+            selectedTags.removeAll { $0 == tag }
         }
         
         // Haptic feedback

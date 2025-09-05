@@ -6,7 +6,7 @@ struct OnboardingView: View {
     @State private var activeDaysPreset = ActiveDaysPreset.weekdays
     @State private var notificationStartTime = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
     @State private var notificationEndTime = Calendar.current.date(from: DateComponents(hour: 18, minute: 0)) ?? Date()
-    @State private var selectedTags: Set<String> = []
+    @State private var selectedTags: [String] = []
     @State private var pushNotificationsEnabled = false
     @State private var textFieldBorderFlash = false
     @State private var buttonWiggle = false
@@ -191,7 +191,7 @@ struct OnboardingView: View {
         userProfile.notificationEnabled = pushNotificationsEnabled
         userProfile.notificationStartTime = notificationStartTime
         userProfile.notificationEndTime = notificationEndTime
-        userProfile.customTags = Array(selectedTags) as NSArray
+        userProfile.customTags = selectedTags as NSArray
         
         // Note: reminderInterval is not set during onboarding - it keeps the default 30 minutes
         // The active days preset is stored separately and can be used for other features later
