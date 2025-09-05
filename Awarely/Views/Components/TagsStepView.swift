@@ -5,6 +5,7 @@ struct TagsStepView: View {
     @State private var newTag = ""
     @FocusState private var isTextFieldFocused: Bool
     @Binding var textFieldBorderFlash: Bool
+    @Binding var isKeyboardVisible: Bool
     let onReturnPressed: () -> Void
     
     var body: some View {
@@ -40,13 +41,14 @@ struct TagsStepView: View {
                         HStack(spacing: 12) {
                             TextField("Enter tag name...", text: $newTag)
                                 .focused($isTextFieldFocused)
+                                .submitLabel(.done)
                                 .onSubmit {
                                     let trimmed = newTag.trimmingCharacters(in: .whitespacesAndNewlines)
                                     if !trimmed.isEmpty {
                                         addTag()
-                                    } else if !selectedTags.isEmpty {
-                                        // If text field is empty but user has tags, advance to next step
-                                        onReturnPressed()
+                                    } else {
+                                        // Just dismiss the keyboard
+                                        isTextFieldFocused = false
                                     }
                                 }
                                 .onChange(of: newTag) { _, newValue in
@@ -135,6 +137,9 @@ struct TagsStepView: View {
             // Dismiss keyboard when tapping outside text field
             isTextFieldFocused = false
         }
+        .onChange(of: isTextFieldFocused) { focused in
+            isKeyboardVisible = focused
+        }
     }
     
     private func addTag() {
@@ -168,6 +173,7 @@ struct TagsStepView: View {
     TagsStepView(
         selectedTags: .constant(["Read", "Exercise"]),
         textFieldBorderFlash: .constant(false),
+        isKeyboardVisible: .constant(false),
         onReturnPressed: {}
     )
 }

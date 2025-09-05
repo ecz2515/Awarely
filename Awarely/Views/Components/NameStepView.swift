@@ -3,6 +3,7 @@ import SwiftUI
 struct NameStepView: View {
     @Binding var userName: String
     @Binding var textFieldBorderFlash: Bool
+    @Binding var isKeyboardVisible: Bool
     @FocusState private var isTextFieldFocused: Bool
     let onReturnPressed: () -> Void
     
@@ -31,8 +32,11 @@ struct NameStepView: View {
                     .font(.title2.weight(.medium))
                     .multilineTextAlignment(.center)
                     .focused($isTextFieldFocused)
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.done)
                     .onSubmit {
-                        onReturnPressed()
+                        // Just dismiss the keyboard
+                        isTextFieldFocused = false
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 16)
@@ -59,9 +63,12 @@ struct NameStepView: View {
         .onTapGesture {
             isTextFieldFocused = false
         }
+        .onChange(of: isTextFieldFocused) { focused in
+            isKeyboardVisible = focused
+        }
     }
 }
 
 #Preview {
-    NameStepView(userName: .constant(""), textFieldBorderFlash: .constant(false), onReturnPressed: {})
+    NameStepView(userName: .constant(""), textFieldBorderFlash: .constant(false), isKeyboardVisible: .constant(false), onReturnPressed: {})
 }

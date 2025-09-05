@@ -10,6 +10,7 @@ struct OnboardingView: View {
     @State private var pushNotificationsEnabled = false
     @State private var textFieldBorderFlash = false
     @State private var buttonWiggle = false
+    @State private var isKeyboardVisible = false
     
     @ObservedObject var coreDataManager = CoreDataManager.shared
     @Environment(\.dismiss) private var dismiss
@@ -45,6 +46,7 @@ struct OnboardingView: View {
                             NameStepView(
                                 userName: $userName, 
                                 textFieldBorderFlash: $textFieldBorderFlash,
+                                isKeyboardVisible: $isKeyboardVisible,
                                 onReturnPressed: {
                                     if canProceedToNext {
                                         withAnimation {
@@ -66,6 +68,7 @@ struct OnboardingView: View {
                             TagsStepView(
                                 selectedTags: $selectedTags,
                                 textFieldBorderFlash: $textFieldBorderFlash,
+                                isKeyboardVisible: $isKeyboardVisible,
                                 onReturnPressed: {
                                     if canProceedToNext {
                                         withAnimation {
@@ -86,8 +89,9 @@ struct OnboardingView: View {
                     }
                     .animation(.easeInOut, value: currentStep)
                     
-                    // Navigation buttons
-                    HStack(spacing: 12) {
+                    // Navigation buttons - hide when keyboard is visible on name step or tags step
+                    if !((currentStep == 1 || currentStep == 4) && isKeyboardVisible) {
+                        HStack(spacing: 12) {
                         if currentStep > 0 {
                             Button("Back") {
                                 withAnimation {
@@ -139,9 +143,10 @@ struct OnboardingView: View {
                                 .buttonStyle(PrimaryButtonStyle())
                             }
                         }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 30)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 30)
                 }
             }
         }
