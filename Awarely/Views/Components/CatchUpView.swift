@@ -17,6 +17,7 @@ struct CatchUpView: View {
     @State private var showingCompletion = false
     @State private var completionScale: CGFloat = 0.8
     @State private var completionOpacity: Double = 0
+    @FocusState private var isTextFieldFocused: Bool
     @ObservedObject var intervalTimer: IntervalTimer
     @EnvironmentObject var coreDataManager: CoreDataManager
     
@@ -36,13 +37,26 @@ struct CatchUpView: View {
     // MARK: - Computed Views
     
     private var mainContent: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                headerSection
-                intervalsListSection
-                
-                if !selectedIntervals.isEmpty {
-                    bulkActionSection
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    headerSection
+                    intervalsListSection
+                    
+                    if !selectedIntervals.isEmpty {
+                        bulkActionSection
+                            .id("textFieldSection")
+                    }
+                }
+            }
+            .onChange(of: isTextFieldFocused) { _, isFocused in
+                if isFocused {
+                    // Scroll to text field when it becomes focused
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            proxy.scrollTo("textFieldSection", anchor: .bottom)
+                        }
+                    }
                 }
             }
         }
@@ -117,11 +131,12 @@ struct CatchUpView: View {
         VStack(spacing: 20) {
             quickTagsSection
             
-            TextField("What did you do during these intervals?", text: $bulkText, axis: .vertical)
+            TextField("What did you accomplish?", text: $bulkText)
                 .textInputAutocapitalization(.sentences)
                 .disableAutocorrection(false)
                 .font(.body)
-                .lineLimit(2...4)
+                .submitLabel(.done)
+                .focused($isTextFieldFocused)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -217,19 +232,27 @@ struct CatchUpView: View {
     
     var body: some View {
         NavigationStack {
-                            ZStack {
-                    if !showingCompletion {
-                        mainContent
-                    }
-                    
-                    if showingCompletion {
-                        completionOverlay
-                    }
+            ZStack {
+                if !showingCompletion {
+                    mainContent
                 }
-                .onTapGesture {
-                    // Dismiss keyboard when tapping outside text field
+                
+                if showingCompletion {
+                    completionOverlay
+                }
+            }
+            .onSubmit {
+                // Dismiss keyboard when Done is pressed
+                isTextFieldFocused = false
+                // Force dismiss keyboard as backup
+                DispatchQueue.main.async {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
+            }
+            .onTapGesture {
+                // Dismiss keyboard when tapping outside text field
+                isTextFieldFocused = false
+            }
         }
         .onChange(of: completedIntervals) { _, newValue in
             handleCompletedIntervalsChange(newValue)
