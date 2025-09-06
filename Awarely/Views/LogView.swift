@@ -557,8 +557,10 @@ struct CustomTagsView: View {
                     HStack(spacing: 12) {
                         TextField("Enter tag name...", text: $newTag)
                             .focused($isTextFieldFocused)
+                            .submitLabel(.done)
                             .onSubmit {
-                                addTag()
+                                // Just dismiss the keyboard, don't add the tag
+                                isTextFieldFocused = false
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
@@ -722,6 +724,10 @@ struct CustomTagsView: View {
             } message: {
                 Text("Are you sure? This action cannot be undone.")
             }
+        }
+        .onTapGesture {
+            // Dismiss keyboard when tapping outside text field
+            isTextFieldFocused = false
         }
 
     }
