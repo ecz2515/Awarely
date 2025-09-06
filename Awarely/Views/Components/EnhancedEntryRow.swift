@@ -15,6 +15,7 @@ struct EnhancedEntryRow: View {
     @State private var isPressed = false
     @State private var isEditing = false
     @State private var draftText: String = ""
+    @State private var showingDeleteConfirmation = false
     @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
@@ -28,7 +29,7 @@ struct EnhancedEntryRow: View {
                 HStack(spacing: 8) {
                     if onDelete != nil {
                         Button {
-                            onDelete?(entry.id)
+                            showingDeleteConfirmation = true
                         } label: {
                             Image(systemName: "trash")
                                 .font(.system(size: 14, weight: .semibold))
@@ -146,6 +147,14 @@ struct EnhancedEntryRow: View {
                     isTextFieldFocused = true
                 }
             }
+        }
+        .confirmationDialog("Delete Entry", isPresented: $showingDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                onDelete?(entry.id)
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Are you sure you want to delete this entry? This action cannot be undone.")
         }
     }
     

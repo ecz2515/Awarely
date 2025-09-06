@@ -45,7 +45,7 @@ struct ContentView: View {
     @State private var showOnboarding = false
     
     // Set this to true to force onboarding, false to use normal logic
-    private let forceOnboardingFlag = true
+    private let forceOnboardingFlag = false
     
     @EnvironmentObject var coreDataManager: CoreDataManager
     
