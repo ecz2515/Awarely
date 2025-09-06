@@ -137,6 +137,11 @@ class NotificationManager: ObservableObject {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
     
+    func dismissAllDeliveredNotifications() {
+        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+        print("✅ Dismissed all delivered notifications")
+    }
+    
     func cancelNotification(for date: Date) {
         let identifier = "logging-reminder-\(date.timeIntervalSince1970)"
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])

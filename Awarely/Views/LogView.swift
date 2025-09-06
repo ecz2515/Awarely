@@ -219,7 +219,7 @@ struct LogView: View {
                 CatchUpView(entries: $entries, customTags: $customTags, missedIntervals: getMissedIntervals(), intervalTimer: intervalTimer)
             }
             .overlay {
-                if showingSuccessAnimation || (!intervalTimer.isLoggingWindow || isLoggingDisabled) {
+                if showingSuccessAnimation || (!intervalTimer.isLoggingWindow || isLoggingDisabled || intervalTimer.isPastLoggingEndTime()) {
                     // Glass-morphism background that's always present
                     Rectangle()
                         .fill(.ultraThinMaterial)
@@ -227,7 +227,7 @@ struct LogView: View {
                         .overlay {
                             if showingSuccessAnimation {
                                 successAnimationContent
-                            } else if !intervalTimer.isLoggingWindow || isLoggingDisabled {
+                            } else if !intervalTimer.isLoggingWindow || isLoggingDisabled || intervalTimer.isPastLoggingEndTime() {
                                 TimerOverlay(
                                     intervalTimer: intervalTimer, 
                                     entries: $entries, 
@@ -344,7 +344,7 @@ struct LogView: View {
     private var inputSection: some View {
         VStack(spacing: 20) {
             VStack(spacing: 12) {
-                TextField("Describe what you did...", text: $newEntry, axis: .vertical)
+                TextField("Describe what you accomplished", text: $newEntry, axis: .vertical)
                     .textInputAutocapitalization(.sentences)
                     .disableAutocorrection(false)
                     .focused($isFieldFocused)

@@ -108,10 +108,14 @@ struct ContentView: View {
         .onAppear {
             loadDataFromCoreData()
             intervalTimer.setEntries(entries)
+            // Dismiss all delivered notifications when app appears
+            NotificationManager.shared.dismissAllDeliveredNotifications()
             // Schedule notifications for today when app becomes active
             NotificationManager.shared.scheduleNotificationsForToday()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            // Dismiss all delivered notifications when app becomes active
+            NotificationManager.shared.dismissAllDeliveredNotifications()
             // Reschedule notifications when app becomes active (after being backgrounded)
             NotificationManager.shared.scheduleNotificationsForToday()
         }
