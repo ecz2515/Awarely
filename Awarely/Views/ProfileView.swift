@@ -41,8 +41,8 @@ struct ProfileView: View {
                 
                 ScrollView {
                     VStack(spacing: 32) {
-                        // App Info Section
-                        appInfoSection
+                        // Profile Header Section
+                        profileHeaderSection
                         
                         // Notifications Section
                         notificationsSection
@@ -102,40 +102,60 @@ struct ProfileView: View {
         }
     }
     
-    private var appInfoSection: some View {
-        VStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [.blue.opacity(0.2), .purple.opacity(0.2)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+    private var profileHeaderSection: some View {
+        VStack(spacing: 24) {
+            // User Avatar and Name
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.blue.opacity(0.2), .purple.opacity(0.2)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .frame(width: 100, height: 100)
+                        .frame(width: 100, height: 100)
+                    
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 50, weight: .medium))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
                 
-                Image(systemName: "brain.head.profile")
-                    .font(.system(size: 40, weight: .medium))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.blue, .purple],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                VStack(spacing: 6) {
+                    Text(userName)
+                        .font(.title.weight(.bold))
+                        .foregroundStyle(.primary)
+                    
+                    Text("Building awareness of your time")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
             
-            VStack(spacing: 6) {
-                Text("Awarely")
-                    .font(.title.weight(.bold))
-                    .foregroundStyle(.primary)
+            // Statistics Cards
+            HStack(spacing: 12) {
+                StatCard(
+                    title: "Total Entries",
+                    value: "\(entries.count)",
+                    icon: "list.bullet",
+                    color: .blue
+                )
                 
-                Text("Building awareness of your time")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+                StatCard(
+                    title: "Day Streak",
+                    value: "\(currentStreak)",
+                    icon: "flame.fill",
+                    color: .orange
+                )
             }
         }
         .padding(.vertical, 20)
@@ -592,7 +612,46 @@ struct ProfileView: View {
         }
     }
     
-
+    // MARK: - Computed Properties
+    
+    private var userName: String {
+        if let userProfile = coreDataManager.getUserProfile(),
+           let name = userProfile.name, !name.isEmpty {
+            return name
+        }
+        return "User"
+    }
+    
+    private var currentStreak: Int {
+        let calendar = Calendar.current
+        var streak = 0
+        let currentDate = Date()
+        
+        // Check if today has entries
+        let todayEntries = entries.filter { entry in
+            calendar.isDate(entry.timestamp, inSameDayAs: currentDate)
+        }
+        
+        if !todayEntries.isEmpty {
+            streak = 1
+        }
+        
+        // Check previous days
+        for dayOffset in 1...365 { // Check up to a year back
+            let previousDate = calendar.date(byAdding: .day, value: -dayOffset, to: Date()) ?? Date()
+            let dayEntries = entries.filter { entry in
+                calendar.isDate(entry.timestamp, inSameDayAs: previousDate)
+            }
+            
+            if !dayEntries.isEmpty {
+                streak += 1
+            } else {
+                break // Streak broken
+            }
+        }
+        
+        return streak
+    }
     
     // MARK: - Helper Functions
     

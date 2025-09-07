@@ -49,9 +49,6 @@ struct HomeView: View {
                         // Timer Status Section
                         timerStatusSection
                         
-                        // Statistics Section
-                        statisticsSection
-                        
                         // View All Entries Button
                         viewAllEntriesButton
                         
@@ -156,23 +153,6 @@ struct HomeView: View {
         )
     }
     
-    private var statisticsSection: some View {
-        HStack(spacing: 12) {
-            StatCard(
-                title: "Total Entries",
-                value: "\(entries.count)",
-                icon: "list.bullet",
-                color: .blue
-            )
-            
-            StatCard(
-                title: "Day Streak",
-                value: "\(currentStreak)",
-                icon: "flame.fill",
-                color: .orange
-            )
-        }
-    }
     
     private var dateSection: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -257,34 +237,4 @@ struct HomeView: View {
         }
     }
     
-    private var currentStreak: Int {
-        let calendar = Calendar.current
-        var streak = 0
-        let currentDate = Date()
-        
-        // Check if today has entries
-        let todayEntries = entries.filter { entry in
-            calendar.isDate(entry.timestamp, inSameDayAs: currentDate)
-        }
-        
-        if !todayEntries.isEmpty {
-            streak = 1
-        }
-        
-        // Check previous days
-        for dayOffset in 1...365 { // Check up to a year back
-            let previousDate = calendar.date(byAdding: .day, value: -dayOffset, to: Date()) ?? Date()
-            let dayEntries = entries.filter { entry in
-                calendar.isDate(entry.timestamp, inSameDayAs: previousDate)
-            }
-            
-            if !dayEntries.isEmpty {
-                streak += 1
-            } else {
-                break // Streak broken
-            }
-        }
-        
-        return streak
-    }
 }
