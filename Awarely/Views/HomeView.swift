@@ -43,17 +43,14 @@ struct HomeView: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        // "Your Entries" Title
-                        titleSection
+                        // Date Title
+                        dateTitleSection
                         
                         // Timer Status Section
                         // timerStatusSection
                         
                         // View All Entries Button
                         viewAllEntriesButton
-                        
-                        // Date Section
-                        dateSection
                         
                         // Today's Entries
                         entriesSection
@@ -78,13 +75,19 @@ struct HomeView: View {
 
     }
     
-    private var titleSection: some View {
+    private var dateTitleSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Your Entries")
+            Text(formattedDate)
                 .font(.largeTitle.weight(.bold))
                 .foregroundStyle(.primary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMM d"
+        return formatter.string(from: Date())
     }
     
     private var timerStatusSection: some View {
@@ -154,15 +157,6 @@ struct HomeView: View {
     }
     
     
-    private var dateSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(Date().formatted(date: .complete, time: .omitted))
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(.primary)
-                .tracking(0.5)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
     
 
     
