@@ -47,7 +47,7 @@ struct HomeView: View {
                         titleSection
                         
                         // Timer Status Section
-                        timerStatusSection
+                        // timerStatusSection
                         
                         // View All Entries Button
                         viewAllEntriesButton
