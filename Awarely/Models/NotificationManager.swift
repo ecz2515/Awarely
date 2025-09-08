@@ -44,6 +44,34 @@ class NotificationManager: ObservableObject {
         "What's been your focus?"
     ]
     
+    // MARK: - Day Started Notification Messages
+    
+    private let dayStartedMessages = [
+        "Good morning! Your logging day begins now",
+        "Good morning! Logging day starts now",
+        "Your logging day has begun",
+        "Good morning! Ready to start logging",
+        "Logging day begins now",
+        "Good morning! Time to start logging",
+        "Your day of logging begins now",
+        "Good morning! Logging starts now",
+        "Logging day begins",
+        "Good morning! Ready to log"
+    ]
+    
+    private let dayStartedBodies = [
+        "First check-in in 30 minutes",
+        "We'll check in with you in 30 minutes",
+        "First reminder in 30 minutes",
+        "Check-in reminders start in 30 minutes",
+        "First logging reminder in 30 minutes",
+        "We'll remind you to log in 30 minutes",
+        "First check-in reminder in 30 minutes",
+        "Logging reminders begin in 30 minutes",
+        "First reminder in 30 minutes",
+        "Check-in starts in 30 minutes"
+    ]
+    
     private func getRandomNotificationSound() -> UNNotificationSound {
         let sounds = [
             UNNotificationSound.default,
@@ -133,6 +161,39 @@ class NotificationManager: ObservableObject {
         }
     }
     
+    func scheduleDayStartedNotification(at date: Date) {
+        let content = UNMutableNotificationContent()
+        content.title = dayStartedMessages.randomElement() ?? "Good morning! Your logging day begins now"
+        content.body = dayStartedBodies.randomElement() ?? "Take a moment to set your intentions for today"
+        content.sound = UNNotificationSound.default // Use default sound for gentler morning notification
+        content.categoryIdentifier = "DAY_STARTED"
+        content.threadIdentifier = "awarely-day-started"
+        
+        // Create trigger for the specific date
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date),
+            repeats: false
+        )
+        
+        // Create request
+        let request = UNNotificationRequest(
+            identifier: "day-started-\(date.timeIntervalSince1970)",
+            content: content,
+            trigger: trigger
+        )
+        
+        // Schedule notification
+        UNUserNotificationCenter.current().add(request) { error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("❌ Error scheduling day started notification: \(error)")
+                } else {
+                    print("✅ Day started notification scheduled for \(date)")
+                }
+            }
+        }
+    }
+    
     func cancelAllNotifications() {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
@@ -183,8 +244,13 @@ class NotificationManager: ObservableObject {
         let targetEndTime = calendar.date(byAdding: .hour, value: hours, to: now) ?? now
         let effectiveEndTime = min(endTime, targetEndTime)
         
-        // Calculate all 30-minute intervals within the time window
-        var currentInterval = startTime
+        // Schedule day started notification at the start time (if it's in the future and within our target window)
+        if startTime > now && startTime < targetEndTime {
+            scheduleDayStartedNotification(at: startTime)
+        }
+        
+        // Calculate all 30-minute intervals within the time window (starting 30 minutes after start time)
+        var currentInterval = startTime.addingTimeInterval(30 * 60) // First logging reminder is 30 minutes after day starts
         let intervalDuration: TimeInterval = 30 * 60 // 30 minutes
         
         var scheduledCount = 0
@@ -197,7 +263,7 @@ class NotificationManager: ObservableObject {
             currentInterval = currentInterval.addingTimeInterval(intervalDuration)
         }
         
-        print("📅 Background fetch: Scheduled \(scheduledCount) notifications for next \(hours) hours")
+        print("📅 Background fetch: Scheduled day started notification and \(scheduledCount) logging reminders for next \(hours) hours")
     }
     
     func scheduleNotificationsForToday() {
@@ -230,8 +296,13 @@ class NotificationManager: ObservableObject {
             endTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? now
         }
         
-        // Calculate all 30-minute intervals within the time window
-        var currentInterval = startTime
+        // Schedule day started notification at the start time
+        if startTime > now {
+            scheduleDayStartedNotification(at: startTime)
+        }
+        
+        // Calculate all 30-minute intervals within the time window (starting 30 minutes after start time)
+        var currentInterval = startTime.addingTimeInterval(30 * 60) // First logging reminder is 30 minutes after day starts
         let intervalDuration: TimeInterval = 30 * 60 // 30 minutes
         
         var scheduledCount = 0
@@ -244,7 +315,7 @@ class NotificationManager: ObservableObject {
             currentInterval = currentInterval.addingTimeInterval(intervalDuration)
         }
         
-        print("📅 Scheduled \(scheduledCount) notifications for today from \(startTime.formatted(date: .omitted, time: .shortened)) to \(endTime.formatted(date: .omitted, time: .shortened))")
+        print("📅 Scheduled day started notification at \(startTime.formatted(date: .omitted, time: .shortened)) and \(scheduledCount) logging reminders from \(startTime.addingTimeInterval(30 * 60).formatted(date: .omitted, time: .shortened)) to \(endTime.formatted(date: .omitted, time: .shortened))")
     }
     
     func scheduleNotificationsForNextDays(days: Int = 7) {
@@ -283,8 +354,13 @@ class NotificationManager: ObservableObject {
                 endTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: targetDay) ?? futureDate
             }
             
-            // Calculate all 30-minute intervals within the time window
-            var currentInterval = startTime
+            // Schedule day started notification at the start time
+            if startTime > now {
+                scheduleDayStartedNotification(at: startTime)
+            }
+            
+            // Calculate all 30-minute intervals within the time window (starting 30 minutes after start time)
+            var currentInterval = startTime.addingTimeInterval(30 * 60) // First logging reminder is 30 minutes after day starts
             let intervalDuration: TimeInterval = 30 * 60 // 30 minutes
             
             while currentInterval < endTime {

@@ -16,8 +16,26 @@ struct TimerOverlay: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 24) {
-                // Check if we're past the logging end time
-                if intervalTimer.isPastLoggingEndTime() {
+                // Check if we're in the overnight gap
+                if intervalTimer.isInOvernightGap() {
+                    // Overnight gap state
+                    Image(systemName: "moon.zzz.fill")
+                        .font(.system(size: 48, weight: .light))
+                        .foregroundStyle(.blue)
+                    
+                    VStack(spacing: 8) {
+                        Text("See you at \(intervalTimer.formatFirstCheckInTimeTomorrow())")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(.primary)
+                        
+                        Text("Sleep well! Logging resumes tomorrow")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                // Check if we're past the logging end time (but not in overnight gap)
+                else if intervalTimer.isPastLoggingEndTime() {
                     // Done for the day state
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 48, weight: .light))

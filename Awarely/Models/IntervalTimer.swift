@@ -422,4 +422,61 @@ class IntervalTimer: ObservableObject {
             return "\(minutes)m"
         }
     }
+    
+    // MARK: - Overnight Gap Detection
+    
+    func isInOvernightGap() -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        let userProfile = CoreDataManager.shared.getUserProfile()
+        
+        // Check if we're past today's notification end time
+        let notificationEndTime: Date
+        if let savedEndTime = userProfile?.notificationEndTime {
+            let today = calendar.startOfDay(for: now)
+            let savedEndComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
+            notificationEndTime = calendar.date(bySettingHour: savedEndComponents.hour ?? 18, 
+                                              minute: savedEndComponents.minute ?? 0, 
+                                              second: 0, 
+                                              of: today) ?? now
+        } else {
+            let today = calendar.startOfDay(for: now)
+            notificationEndTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? now
+        }
+        
+        // Check if we're before tomorrow's first check-in
+        let firstCheckInTime = getFirstCheckInTimeTomorrow()
+        
+        return now > notificationEndTime && now < firstCheckInTime
+    }
+    
+    func getFirstCheckInTimeTomorrow() -> Date {
+        let calendar = Calendar.current
+        let now = Date()
+        let userProfile = CoreDataManager.shared.getUserProfile()
+        
+        // Get tomorrow's start time
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now
+        let tomorrowStart = calendar.startOfDay(for: tomorrow)
+        
+        // Get notification start time for tomorrow
+        let notificationStartTime: Date
+        if let savedStartTime = userProfile?.notificationStartTime {
+            let savedStartComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+            notificationStartTime = calendar.date(bySettingHour: savedStartComponents.hour ?? 9, 
+                                                minute: savedStartComponents.minute ?? 0, 
+                                                second: 0, 
+                                                of: tomorrowStart) ?? tomorrowStart
+        } else {
+            notificationStartTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrowStart) ?? tomorrowStart
+        }
+        
+        // First check-in is 30 minutes after notification window starts
+        return notificationStartTime.addingTimeInterval(interval)
+    }
+    
+    func formatFirstCheckInTimeTomorrow() -> String {
+        let firstCheckInTime = getFirstCheckInTimeTomorrow()
+        return firstCheckInTime.formatted(date: .omitted, time: .shortened)
+    }
 }
