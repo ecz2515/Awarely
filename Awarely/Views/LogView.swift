@@ -447,6 +447,10 @@ struct LogView: View {
             timePeriodEnd: currentInterval.end
         )
         
+        // Cancel the notification for this interval since we're logging early
+        // This prevents the notification from firing when the interval actually ends
+        NotificationManager.shared.cancelNotification(for: currentInterval.end)
+        
         // Save to Core Data
         coreDataManager.addLogEntry(newLogEntry)
         
