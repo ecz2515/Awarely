@@ -24,6 +24,10 @@ struct ProfileView: View {
     @State private var tempStartTime = Date()
     @State private var tempEndTime = Date()
     
+    // Notification permission states
+    @State private var showingPermissionAlert = false
+    @State private var notificationPermissionStatus: UNAuthorizationStatus = .notDetermined
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -69,6 +73,7 @@ struct ProfileView: View {
         }
         .onAppear {
             loadSettingsFromCoreData()
+            checkNotificationPermissionStatus()
         }
         .onChange(of: reminderInterval) { 
             // Ensure grace period doesn't exceed reminder interval
@@ -99,6 +104,16 @@ struct ProfileView: View {
                     coreDataManager.saveUserProfile()
                 }
             )
+        }
+        .alert("Notification Permission", isPresented: $showingPermissionAlert) {
+            Button("Settings") {
+                if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(settingsUrl)
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Please enable notifications in Settings to receive mindful reminders.")
         }
     }
     
@@ -174,15 +189,23 @@ struct ProfileView: View {
                         Text("Push notifications")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(.primary)
-                        // Text("Reminders to log your activities")
-                        //     .font(.caption)
-                        //     .foregroundStyle(.secondary)
+                        
+                        Text(notificationStatusText)
+                            .font(.caption)
+                            .foregroundStyle(notificationStatusColor)
                     }
                     
                     Spacer()
                     
                     Toggle("", isOn: $notificationEnabled)
                         .tint(.blue)
+                        .onChange(of: notificationEnabled) { _, newValue in
+                            if newValue {
+                                handleNotificationToggleOn()
+                            } else {
+                                handleNotificationToggleOff()
+                            }
+                        }
                 }
                 
                 // Reminder Interval
@@ -614,6 +637,46 @@ struct ProfileView: View {
     
     // MARK: - Computed Properties
     
+    private var notificationStatusText: String {
+        if !notificationEnabled {
+            return "Notifications disabled"
+        }
+        
+        switch notificationPermissionStatus {
+        case .authorized:
+            return "Notifications enabled"
+        case .denied:
+            return "Permission denied - check Settings"
+        case .notDetermined:
+            return "Permission not requested"
+        case .provisional:
+            return "Provisional notifications enabled"
+        case .ephemeral:
+            return "Ephemeral notifications enabled"
+        @unknown default:
+            return "Unknown status"
+        }
+    }
+    
+    private var notificationStatusColor: Color {
+        if !notificationEnabled {
+            return .secondary
+        }
+        
+        switch notificationPermissionStatus {
+        case .authorized:
+            return .green
+        case .denied:
+            return .red
+        case .notDetermined:
+            return .orange
+        case .provisional, .ephemeral:
+            return .blue
+        @unknown default:
+            return .secondary
+        }
+    }
+    
     private var userName: String {
         if let userProfile = coreDataManager.getUserProfile(),
            let name = userProfile.name, !name.isEmpty {
@@ -780,6 +843,25 @@ struct ProfileView: View {
         let userProfile = coreDataManager.fetchOrCreateUserProfile()
         userProfile.loggingGracePeriod = Int32(gracePeriod)
         coreDataManager.saveUserProfile()
+    }
+    
+    private func checkNotificationPermissionStatus() {
+        NotificationManager.shared.getNotificationAuthorizationStatus { status in
+            notificationPermissionStatus = status
+        }
+    }
+    
+    private func handleNotificationToggleOn() {
+        NotificationManager.shared.requestPermission()
+        // Check status after a brief delay to allow permission dialog to complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            checkNotificationPermissionStatus()
+        }
+    }
+    
+    private func handleNotificationToggleOff() {
+        NotificationManager.shared.cancelAllNotifications()
+        checkNotificationPermissionStatus()
     }
 }
 

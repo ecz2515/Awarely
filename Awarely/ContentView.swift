@@ -130,8 +130,9 @@ struct ContentView: View {
                 shouldNavigateToHome = false
             }
         }
-        .onChange(of: notificationEnabled) { 
+        .onChange(of: notificationEnabled) { _, newValue in
             saveSettingsToCoreData()
+            handleNotificationToggleChange(newValue)
         }
         .onChange(of: reminderInterval) { 
             saveSettingsToCoreData()
@@ -200,6 +201,18 @@ struct ContentView: View {
     
     private func saveCustomTagsToCoreData() {
         coreDataManager.updateCustomTags(customTags)
+    }
+    
+    private func handleNotificationToggleChange(_ enabled: Bool) {
+        if enabled {
+            // Request notification permission when toggle is turned ON
+            NotificationManager.shared.requestPermission()
+            // Schedule notifications for today
+            NotificationManager.shared.scheduleNotificationsForToday()
+        } else {
+            // Cancel all notifications when toggle is turned OFF
+            NotificationManager.shared.cancelAllNotifications()
+        }
     }
     
     // MARK: - Sample Data (for backward compatibility)
