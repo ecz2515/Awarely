@@ -3,7 +3,6 @@ import SwiftUI
 struct OnboardingView: View {
     @State private var currentStep = 0
     @State private var userName = ""
-    @State private var activeDaysPreset = ActiveDaysPreset.weekdays
     @State private var notificationStartTime = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
     @State private var notificationEndTime = Calendar.current.date(from: DateComponents(hour: 18, minute: 0)) ?? Date()
     @State private var selectedTags: [String] = []
@@ -32,7 +31,7 @@ struct OnboardingView: View {
                 
                 VStack(spacing: 0) {
                     // Progress indicator
-                    ProgressView(value: Double(currentStep + 1), total: 6)
+                    ProgressView(value: Double(currentStep + 1), total: 5)
                         .progressViewStyle(LinearProgressViewStyle(tint: .blue))
                         .padding(.horizontal, 20)
                         .padding(.top, 10)
@@ -56,13 +55,11 @@ struct OnboardingView: View {
                                 }
                             )
                         case 2:
-                            ActiveDaysStepView(activeDaysPreset: $activeDaysPreset)
-                        case 3:
                             NotificationWindowStepView(
                                 startTime: $notificationStartTime,
                                 endTime: $notificationEndTime
                             )
-                        case 4:
+                        case 3:
                             TagsStepView(
                                 selectedTags: $selectedTags,
                                 textFieldBorderFlash: $textFieldBorderFlash,
@@ -75,7 +72,7 @@ struct OnboardingView: View {
                                     }
                                 }
                             )
-                        case 5:
+                        case 4:
                             PushNotificationsStepView(
                                 pushNotificationsEnabled: $pushNotificationsEnabled
                             )
@@ -85,7 +82,7 @@ struct OnboardingView: View {
                     }
                     
                     // Navigation buttons - hide when keyboard is visible on name step or tags step
-                    if !((currentStep == 1 || currentStep == 4) && isKeyboardVisible) {
+                    if !((currentStep == 1 || currentStep == 3) && isKeyboardVisible) {
                         HStack(spacing: 12) {
                         if currentStep > 0 {
                             Button("Back") {
@@ -93,7 +90,7 @@ struct OnboardingView: View {
                             }
                             .buttonStyle(SecondaryButtonStyle())
                             
-                            if currentStep < 5 {
+                            if currentStep < 4 {
                                 Button("Next") {
                                     if canProceedToNext {
                                         currentStep += 1
@@ -113,7 +110,7 @@ struct OnboardingView: View {
                             }
                         } else {
                             // Center the Next button on the first step
-                            if currentStep < 5 {
+                            if currentStep < 4 {
                                 Button("Next") {
                                     if canProceedToNext {
                                         currentStep += 1
@@ -147,8 +144,7 @@ struct OnboardingView: View {
         case 0: return true
         case 1: return !userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case 2: return true
-        case 3: return true
-        case 4: return !selectedTags.isEmpty
+        case 3: return !selectedTags.isEmpty
         default: return true
         }
     }
@@ -160,7 +156,7 @@ struct OnboardingView: View {
         }
         
         // Flash text field border for name step and tags step
-        if currentStep == 1 || currentStep == 4 {
+        if currentStep == 1 || currentStep == 3 {
             withAnimation(.easeInOut(duration: 0.1).repeatCount(3, autoreverses: true)) {
                 textFieldBorderFlash = true
             }

@@ -7,6 +7,23 @@
 
 import SwiftUI
 
+enum NotificationSchedule: String, CaseIterable {
+    case daily = "Daily"
+    case weekdays = "Weekdays"
+    case custom = "Custom"
+    
+    var description: String {
+        switch self {
+        case .daily:
+            return "Every day"
+        case .weekdays:
+            return "Monday to Friday"
+        case .custom:
+            return "Custom schedule"
+        }
+    }
+}
+
 struct ProfileView: View {
     @Binding var notificationEnabled: Bool
     @Binding var reminderInterval: TimeInterval
@@ -16,6 +33,8 @@ struct ProfileView: View {
     // Premium feature state
     @State private var isPremiumUser = false
     @State private var gracePeriod: Int = 5
+    @State private var notificationSchedule: NotificationSchedule = .daily
+    @State private var vacationModeEnabled = false
     @EnvironmentObject var coreDataManager: CoreDataManager
     
     // Time picker states
@@ -326,6 +345,41 @@ struct ProfileView: View {
                         showingEndTimePicker = true
                     }
                     
+                    // Notification Schedule
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text("Schedule")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                
+                                Image(systemName: "crown.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                            }
+                            Text("When to send notifications")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 8) {
+                            Text(notificationSchedule.rawValue)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .opacity(0.7)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        showPremiumScheduleAlert(notificationSchedule)
+                    }
+                    
                     // Vacation Mode
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -338,21 +392,20 @@ struct ProfileView: View {
                                     .font(.caption2)
                                     .foregroundStyle(.orange)
                             }
-                            Text("Pause all reminders and logging")
+                            Text("Pause all reminders")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         
                         Spacer()
                         
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .opacity(0.7)
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        showComingSoonAlert("Vacation Mode")
+                        Toggle("", isOn: $vacationModeEnabled)
+                            .tint(.blue)
+                            .disabled(true) // Prevent toggle from moving
+                            .onTapGesture {
+                                // Show premium prompt when trying to turn on
+                                showPremiumScheduleAlert(.custom)
+                            }
                     }
                 }
             }
@@ -809,6 +862,23 @@ struct ProfileView: View {
     }
     
 
+    
+    
+    private func showPremiumScheduleAlert(_ schedule: NotificationSchedule) {
+        let featureName = schedule == .custom ? "Vacation Mode" : "\(schedule.rawValue) notification schedule"
+        let alert = UIAlertController(
+            title: "Premium Feature",
+            message: "\(featureName) will be available in the premium version. Coming soon!",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(alert, animated: true)
+        }
+    }
     
     private func showComingSoonAlert(_ featureName: String) {
         let alert = UIAlertController(

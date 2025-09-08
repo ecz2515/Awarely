@@ -43,13 +43,8 @@ struct TagsStepView: View {
                                 .focused($isTextFieldFocused)
                                 .submitLabel(.done)
                                 .onSubmit {
-                                    let trimmed = newTag.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    if !trimmed.isEmpty {
-                                        addTag()
-                                    } else {
-                                        // Just dismiss the keyboard
-                                        isTextFieldFocused = false
-                                    }
+                                    // Just dismiss the keyboard when Done is pressed
+                                    isTextFieldFocused = false
                                 }
                                 .onChange(of: newTag) { _, newValue in
                                     // Limit to 40 characters
