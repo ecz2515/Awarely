@@ -122,6 +122,50 @@ class NotificationManager: ObservableObject {
         }
     }
     
+    func debugNotificationTimes() {
+        let userProfile = CoreDataManager.shared.getUserProfile()
+        let calendar = Calendar.current
+        let now = Date()
+        
+        print("🔍 DEBUG: Current notification settings")
+        print("   Current time: \(now)")
+        print("   Current timezone: \(TimeZone.current.identifier)")
+        
+        if let startTime = userProfile?.notificationStartTime {
+            print("   Saved start time: \(startTime)")
+            let startComponents = calendar.dateComponents([.hour, .minute], from: startTime)
+            print("   Start time components: \(startComponents.hour ?? 0):\(String(format: "%02d", startComponents.minute ?? 0))")
+        } else {
+            print("   ❌ No saved start time - notifications will not be scheduled")
+        }
+        
+        if let endTime = userProfile?.notificationEndTime {
+            print("   Saved end time: \(endTime)")
+            let endComponents = calendar.dateComponents([.hour, .minute], from: endTime)
+            print("   End time components: \(endComponents.hour ?? 0):\(String(format: "%02d", endComponents.minute ?? 0))")
+        } else {
+            print("   ❌ No saved end time - notifications will not be scheduled")
+        }
+        
+        // Show what the time window would be for today (only if both times are set)
+        if let startTime = userProfile?.notificationStartTime,
+           let endTime = userProfile?.notificationEndTime {
+            let today = calendar.startOfDay(for: now)
+            let startComponents = calendar.dateComponents([.hour, .minute], from: startTime)
+            let endComponents = calendar.dateComponents([.hour, .minute], from: endTime)
+            
+            if let todayStart = calendar.date(bySettingHour: startComponents.hour ?? 0, minute: startComponents.minute ?? 0, second: 0, of: today),
+               let todayEnd = calendar.date(bySettingHour: endComponents.hour ?? 0, minute: endComponents.minute ?? 0, second: 0, of: today) {
+                print("   Today's notification window: \(todayStart) to \(todayEnd)")
+                print("   Is current time within window? \(isWithinNotificationTimeWindow(now))")
+            } else {
+                print("   ❌ Could not create today's time window")
+            }
+        } else {
+            print("   ❌ Cannot show time window - notification times not set")
+        }
+    }
+    
     func getNotificationAuthorizationStatus(completion: @escaping (UNAuthorizationStatus) -> Void) {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             DispatchQueue.main.async {
@@ -267,45 +311,43 @@ class NotificationManager: ObservableObject {
         let now = Date()
         print("⏰ Current time: \(now)")
         
+        let userProfile = CoreDataManager.shared.getUserProfile()
+        
+        // Check if notification times are set - if not, don't schedule anything
+        guard let savedStartTime = userProfile?.notificationStartTime,
+              let savedEndTime = userProfile?.notificationEndTime else {
+            print("⚠️ No notification times set in CoreData - skipping notification scheduling")
+            return
+        }
+        
         var totalScheduled = 0
         
         for dayOffset in 0..<days {
             guard let futureDate = calendar.date(byAdding: .day, value: dayOffset, to: now) else { continue }
             print("📆 Processing day \(dayOffset): \(futureDate)")
             
-            let userProfile = CoreDataManager.shared.getUserProfile()
+            // Use the saved times and set them for the target day
+            let targetDay = calendar.startOfDay(for: futureDate)
+            let startComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+            let endComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
             
-            // Get notification time window for this day
-            let startTime: Date
-            let endTime: Date
-            
-            if let savedStartTime = userProfile?.notificationStartTime,
-               let savedEndTime = userProfile?.notificationEndTime {
-                let targetDay = calendar.startOfDay(for: futureDate)
-                let startComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
-                let endComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
-                
-                startTime = calendar.date(bySettingHour: startComponents.hour ?? 9, 
-                                        minute: startComponents.minute ?? 0, 
-                                        second: 0, 
-                                        of: targetDay) ?? futureDate
-                endTime = calendar.date(bySettingHour: endComponents.hour ?? 18, 
-                                      minute: endComponents.minute ?? 0, 
-                                      second: 0, 
-                                      of: targetDay) ?? futureDate
-            } else {
-                // Default times
-                let targetDay = calendar.startOfDay(for: futureDate)
-                startTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: targetDay) ?? futureDate
-                endTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: targetDay) ?? futureDate
+            guard let startTime = calendar.date(bySettingHour: startComponents.hour ?? 0, 
+                                              minute: startComponents.minute ?? 0, 
+                                              second: 0, 
+                                              of: targetDay),
+                  let endTime = calendar.date(bySettingHour: endComponents.hour ?? 0, 
+                                            minute: endComponents.minute ?? 0, 
+                                            second: 0, 
+                                            of: targetDay) else {
+                print("⚠️ Could not create start/end times for day \(dayOffset)")
+                continue
             }
+            
+            print("🕘 Day \(dayOffset) - Start time: \(startTime), End time: \(endTime)")
             
             // Schedule day started notification at the start time
             // Only schedule if it's for today and the start time hasn't passed by more than 1 hour
-            // This allows for the day started notification even if the app is opened slightly after start time
             let oneHourAgo = now.addingTimeInterval(-60 * 60)
-            print("🕘 Day \(dayOffset) - Start time: \(startTime), End time: \(endTime)")
-            print("🕘 One hour ago: \(oneHourAgo)")
             
             if startTime > oneHourAgo {
                 print("✅ Scheduling day started notification for \(startTime)")
@@ -316,7 +358,7 @@ class NotificationManager: ObservableObject {
             
             // Calculate all 30-minute intervals within the time window
             // First logging reminder should be at the END of the first interval (30 minutes after start time)
-            var currentInterval = startTime.addingTimeInterval(30 * 60) // First logging reminder is 30 minutes after day starts (end of first interval)
+            var currentInterval = startTime.addingTimeInterval(30 * 60) // First logging reminder is 30 minutes after day starts
             let intervalDuration: TimeInterval = 30 * 60 // 30 minutes
             
             print("⏰ Day \(dayOffset) - First logging reminder at: \(currentInterval)")
@@ -381,36 +423,28 @@ class NotificationManager: ObservableObject {
         let userProfile = CoreDataManager.shared.getUserProfile()
         print("🕐 Checking if \(date) is within notification time window")
         
-        // Get notification start time
-        let notificationStartTime: Date
-        if let savedStartTime = userProfile?.notificationStartTime {
-            // Use the saved start time, but if it's from a previous day, use today's start time
-            let today = calendar.startOfDay(for: date)
-            let savedStartComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
-            notificationStartTime = calendar.date(bySettingHour: savedStartComponents.hour ?? 9, 
-                                                minute: savedStartComponents.minute ?? 0, 
-                                                second: 0, 
-                                                of: today) ?? date
-        } else {
-            // Default to 9 AM today
-            let today = calendar.startOfDay(for: date)
-            notificationStartTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? date
+        // Check if notification times are set - if not, return false
+        guard let savedStartTime = userProfile?.notificationStartTime,
+              let savedEndTime = userProfile?.notificationEndTime else {
+            print("🕐 No notification times set - not within window")
+            return false
         }
         
-        // Get notification end time
-        let notificationEndTime: Date
-        if let savedEndTime = userProfile?.notificationEndTime {
-            // Use the saved end time, but if it's from a previous day, use today's end time
-            let today = calendar.startOfDay(for: date)
-            let savedEndComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
-            notificationEndTime = calendar.date(bySettingHour: savedEndComponents.hour ?? 18, 
-                                              minute: savedEndComponents.minute ?? 0, 
-                                              second: 0, 
-                                              of: today) ?? date
-        } else {
-            // Default to 6 PM today
-            let today = calendar.startOfDay(for: date)
-            notificationEndTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? date
+        // Use the saved times for today
+        let today = calendar.startOfDay(for: date)
+        let savedStartComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+        let savedEndComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
+        
+        guard let notificationStartTime = calendar.date(bySettingHour: savedStartComponents.hour ?? 0, 
+                                                      minute: savedStartComponents.minute ?? 0, 
+                                                      second: 0, 
+                                                      of: today),
+              let notificationEndTime = calendar.date(bySettingHour: savedEndComponents.hour ?? 0, 
+                                                    minute: savedEndComponents.minute ?? 0, 
+                                                    second: 0, 
+                                                    of: today) else {
+            print("🕐 Could not create notification times - not within window")
+            return false
         }
         
         // Check if the date is within the notification time window

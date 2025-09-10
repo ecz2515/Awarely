@@ -4,7 +4,7 @@ struct OnboardingView: View {
     @State private var currentStep = 0
     @State private var userName = ""
     @State private var notificationStartTime = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
-    @State private var notificationEndTime = Calendar.current.date(from: DateComponents(hour: 18, minute: 0)) ?? Date()
+    @State private var notificationEndTime = Calendar.current.date(from: DateComponents(hour: 21, minute: 0)) ?? Date()
     @State private var selectedTags: [String] = []
     @State private var pushNotificationsEnabled = false
     @State private var textFieldBorderFlash = false

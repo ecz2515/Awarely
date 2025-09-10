@@ -115,7 +115,7 @@ struct ProfileView: View {
                     
                     // Reschedule notifications with new time
                     if notificationEnabled {
-                        NotificationManager.shared.scheduleNotificationsForNextDays(days: 3)
+                        NotificationManager.shared.rescheduleNotificationsForSettingsChange()
                     }
                 }
             )
@@ -133,7 +133,7 @@ struct ProfileView: View {
                     
                     // Reschedule notifications with new time
                     if notificationEnabled {
-                        NotificationManager.shared.scheduleNotificationsForNextDays(days: 3)
+                        NotificationManager.shared.rescheduleNotificationsForSettingsChange()
                     }
                 }
             )
@@ -807,14 +807,10 @@ struct ProfileView: View {
            let savedTime = userProfile.notificationStartTime {
             return savedTime
         } else {
-            // Default to 9 AM
+            // No saved time - return a reasonable default for display only
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: Date())
-            let defaultTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? Date()
-            let userProfile = coreDataManager.fetchOrCreateUserProfile()
-            userProfile.notificationStartTime = defaultTime
-            coreDataManager.saveUserProfile()
-            return defaultTime
+            return calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? Date()
         }
     }
     
@@ -823,14 +819,10 @@ struct ProfileView: View {
            let savedTime = userProfile.notificationEndTime {
             return savedTime
         } else {
-            // Default to 9 PM
+            // No saved time - return a reasonable default for display only
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: Date())
-            let defaultTime = calendar.date(bySettingHour: 21, minute: 0, second: 0, of: today) ?? Date()
-            let userProfile = coreDataManager.fetchOrCreateUserProfile()
-            userProfile.notificationEndTime = defaultTime
-            coreDataManager.saveUserProfile()
-            return defaultTime
+            return calendar.date(bySettingHour: 21, minute: 0, second: 0, of: today) ?? Date()
         }
     }
     
