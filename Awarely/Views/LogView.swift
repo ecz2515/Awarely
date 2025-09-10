@@ -238,6 +238,14 @@ struct LogView: View {
                         }
                 }
             }
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { 
+                        isFieldFocused = false 
+                    }
+                }
+            }
         }
 
         .onChange(of: entries) { _, _ in
@@ -344,22 +352,23 @@ struct LogView: View {
     private var inputSection: some View {
         VStack(spacing: 20) {
             VStack(spacing: 12) {
-                TextField("Describe what you accomplished", text: $newEntry, axis: .vertical)
+                TextField("Describe what you accomplished",
+                          text: $newEntry,
+                          axis: .vertical) // ← make it multi-line
                     .textInputAutocapitalization(.sentences)
                     .disableAutocorrection(false)
                     .focused($isFieldFocused)
-                    .submitLabel(.done)
-                    .onSubmit { addEntry() }
+                    .submitLabel(.return)
                     .font(.body)
-                    .lineLimit(3...6)
+                    .lineLimit(3...6) // ← works with axis:.vertical
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, 20)
+                    .frame(minHeight: 60)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .strokeBorder(.quaternary, lineWidth: 0.5)
                     )
-
             }
             
             // Copy previous entry button
