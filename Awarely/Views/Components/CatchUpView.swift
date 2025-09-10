@@ -21,9 +21,9 @@ struct CatchUpView: View {
     @ObservedObject var intervalTimer: IntervalTimer
     @EnvironmentObject var coreDataManager: CoreDataManager
     
-    // Order missed intervals latest first
+    // Order missed intervals latest first - use current missed intervals
     private var orderedMissedIntervals: [(start: Date, end: Date)] {
-        return missedIntervals.reversed()
+        return intervalTimer.getMissedIntervals(for: entries).reversed()
     }
     
     // Track which intervals have been completed by their time period
@@ -263,8 +263,8 @@ struct CatchUpView: View {
     }
     
     private func handleCompletedIntervalsChange(_ newValue: Set<String>) {
-        // Check if all intervals are completed
-        if newValue.count == orderedMissedIntervals.count && !orderedMissedIntervals.isEmpty {
+        // Check if there are no more missed intervals
+        if orderedMissedIntervals.isEmpty && !entries.isEmpty {
             showCompletionAnimation()
         }
     }
