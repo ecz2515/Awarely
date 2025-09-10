@@ -107,9 +107,16 @@ struct ProfileView: View {
                 title: "Start Time",
                 selectedTime: $tempStartTime,
                 onSave: {
+                    print("⚙️ Saving start time: \(tempStartTime)")
                     let userProfile = coreDataManager.fetchOrCreateUserProfile()
                     userProfile.notificationStartTime = tempStartTime
                     coreDataManager.saveUserProfile()
+                    print("⚙️ Start time saved successfully")
+                    
+                    // Reschedule notifications with new time
+                    if notificationEnabled {
+                        NotificationManager.shared.scheduleNotificationsForNextDays(days: 3)
+                    }
                 }
             )
         }
@@ -118,9 +125,16 @@ struct ProfileView: View {
                 title: "End Time",
                 selectedTime: $tempEndTime,
                 onSave: {
+                    print("⚙️ Saving end time: \(tempEndTime)")
                     let userProfile = coreDataManager.fetchOrCreateUserProfile()
                     userProfile.notificationEndTime = tempEndTime
                     coreDataManager.saveUserProfile()
+                    print("⚙️ End time saved successfully")
+                    
+                    // Reschedule notifications with new time
+                    if notificationEnabled {
+                        NotificationManager.shared.scheduleNotificationsForNextDays(days: 3)
+                    }
                 }
             )
         }
@@ -809,10 +823,10 @@ struct ProfileView: View {
            let savedTime = userProfile.notificationEndTime {
             return savedTime
         } else {
-            // Default to 6 PM
+            // Default to 9 PM
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: Date())
-            let defaultTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? Date()
+            let defaultTime = calendar.date(bySettingHour: 21, minute: 0, second: 0, of: today) ?? Date()
             let userProfile = coreDataManager.fetchOrCreateUserProfile()
             userProfile.notificationEndTime = defaultTime
             coreDataManager.saveUserProfile()
@@ -901,8 +915,24 @@ struct ProfileView: View {
         if let userProfile = coreDataManager.getUserProfile() {
             gracePeriod = Int(userProfile.loggingGracePeriod)
             isPremiumUser = userProfile.isPremiumUser
+            
+            // Load notification times into temp variables
+            if let savedStartTime = userProfile.notificationStartTime {
+                tempStartTime = savedStartTime
+            } else {
+                tempStartTime = getNotificationStartTime()
+            }
+            
+            if let savedEndTime = userProfile.notificationEndTime {
+                tempEndTime = savedEndTime
+            } else {
+                tempEndTime = getNotificationEndTime()
+            }
         } else {
             gracePeriod = 5 // Default to 5 minutes
+            // Set default notification times
+            tempStartTime = getNotificationStartTime()
+            tempEndTime = getNotificationEndTime()
         }
         
         // Note: reminderInterval is managed by ContentView and passed as a binding
