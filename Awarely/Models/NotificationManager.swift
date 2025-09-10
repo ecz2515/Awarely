@@ -137,6 +137,8 @@ class NotificationManager: ObservableObject {
     }
     
     func scheduleLoggingReminder(at date: Date) {
+        print("🔔 Attempting to schedule logging reminder for \(date)")
+        
         // Check if notifications are enabled in user settings
         let userProfile = CoreDataManager.shared.getUserProfile()
         if let profile = userProfile, !profile.notificationEnabled {
@@ -149,6 +151,8 @@ class NotificationManager: ObservableObject {
             print("⚠️ Notification not scheduled for \(date) - outside notification time window")
             return
         }
+        
+        print("✅ Logging reminder passed all checks for \(date)")
         
         let content = UNMutableNotificationContent()
         content.title = notificationMessages.randomElement() ?? "Time to Log Your Activity"
@@ -183,12 +187,16 @@ class NotificationManager: ObservableObject {
     }
     
     func scheduleDayStartedNotification(at date: Date) {
+        print("🌅 Attempting to schedule day started notification for \(date)")
+        
         // Check if notifications are enabled in user settings
         let userProfile = CoreDataManager.shared.getUserProfile()
         if let profile = userProfile, !profile.notificationEnabled {
             print("⚠️ Day started notification not scheduled for \(date) - notifications disabled in settings")
             return
         }
+        
+        print("✅ Day started notification passed all checks for \(date)")
         
         let content = UNMutableNotificationContent()
         content.title = dayStartedMessages.randomElement() ?? "Good morning! Your logging day begins now"
@@ -223,7 +231,9 @@ class NotificationManager: ObservableObject {
     }
     
     func cancelAllNotifications() {
+        print("🗑️ Cancelling all pending notifications")
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        print("✅ All pending notifications cancelled")
     }
     
     func dismissAllDeliveredNotifications() {
@@ -239,24 +249,29 @@ class NotificationManager: ObservableObject {
     // MARK: - Enhanced Scheduling for Background Fetch
     
     func scheduleNotificationsForNextHours(hours: Int) {
-        // For background fetch, schedule for the next 2 days to ensure day boundary coverage
+        print("🔄 Background fetch triggered - scheduling notifications for next 3 days")
+        // For background fetch, schedule for the next 3 days to ensure day boundary coverage
         // This ensures notifications work even if background fetch is unreliable
-        scheduleNotificationsForNextDays(days: 2)
+        scheduleNotificationsForNextDays(days: 3)
     }
     
     func scheduleNotificationsForToday() {
+        print("📱 App launch/settings change - scheduling notifications for next 3 days")
         // Schedule notifications for the next 3 days to ensure continuous coverage
         scheduleNotificationsForNextDays(days: 3)
     }
     
     func scheduleNotificationsForNextDays(days: Int = 7) {
+        print("📅 Starting to schedule notifications for next \(days) days")
         let calendar = Calendar.current
         let now = Date()
+        print("⏰ Current time: \(now)")
         
         var totalScheduled = 0
         
         for dayOffset in 0..<days {
             guard let futureDate = calendar.date(byAdding: .day, value: dayOffset, to: now) else { continue }
+            print("📆 Processing day \(dayOffset): \(futureDate)")
             
             let userProfile = CoreDataManager.shared.getUserProfile()
             
@@ -286,22 +301,40 @@ class NotificationManager: ObservableObject {
             }
             
             // Schedule day started notification at the start time
-            if startTime > now {
+            // Only schedule if it's for today and the start time hasn't passed by more than 1 hour
+            // This allows for the day started notification even if the app is opened slightly after start time
+            let oneHourAgo = now.addingTimeInterval(-60 * 60)
+            print("🕘 Day \(dayOffset) - Start time: \(startTime), End time: \(endTime)")
+            print("🕘 One hour ago: \(oneHourAgo)")
+            
+            if startTime > oneHourAgo {
+                print("✅ Scheduling day started notification for \(startTime)")
                 scheduleDayStartedNotification(at: startTime)
+            } else {
+                print("⏭️ Skipping day started notification for \(startTime) - too far in the past")
             }
             
-            // Calculate all 30-minute intervals within the time window (starting 30 minutes after start time)
-            var currentInterval = startTime.addingTimeInterval(30 * 60) // First logging reminder is 30 minutes after day starts
+            // Calculate all 30-minute intervals within the time window
+            // First logging reminder should be at the END of the first interval (30 minutes after start time)
+            var currentInterval = startTime.addingTimeInterval(30 * 60) // First logging reminder is 30 minutes after day starts (end of first interval)
             let intervalDuration: TimeInterval = 30 * 60 // 30 minutes
+            
+            print("⏰ Day \(dayOffset) - First logging reminder at: \(currentInterval)")
+            var dayScheduledCount = 0
             
             while currentInterval < endTime {
                 // Only schedule if the interval is in the future
                 if currentInterval > now {
                     scheduleLoggingReminder(at: currentInterval)
                     totalScheduled += 1
+                    dayScheduledCount += 1
+                } else {
+                    print("⏭️ Skipping past interval: \(currentInterval)")
                 }
                 currentInterval = currentInterval.addingTimeInterval(intervalDuration)
             }
+            
+            print("📊 Day \(dayOffset) scheduled \(dayScheduledCount) logging reminders")
         }
         
         print("📅 Scheduled \(totalScheduled) notifications for next \(days) days")
@@ -310,6 +343,7 @@ class NotificationManager: ObservableObject {
     // MARK: - Settings Change Handling
     
     func rescheduleNotificationsForSettingsChange() {
+        print("⚙️ Settings changed - rescheduling all notifications")
         // Cancel all existing notifications
         cancelAllNotifications()
         
@@ -345,6 +379,7 @@ class NotificationManager: ObservableObject {
     private func isWithinNotificationTimeWindow(_ date: Date) -> Bool {
         let calendar = Calendar.current
         let userProfile = CoreDataManager.shared.getUserProfile()
+        print("🕐 Checking if \(date) is within notification time window")
         
         // Get notification start time
         let notificationStartTime: Date
@@ -379,6 +414,8 @@ class NotificationManager: ObservableObject {
         }
         
         // Check if the date is within the notification time window
-        return date >= notificationStartTime && date <= notificationEndTime
+        let isWithin = date >= notificationStartTime && date <= notificationEndTime
+        print("🕐 Time window check: \(date) is \(isWithin ? "WITHIN" : "OUTSIDE") window (\(notificationStartTime) - \(notificationEndTime))")
+        return isWithin
     }
 }

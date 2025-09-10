@@ -38,8 +38,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
     
     func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        // Schedule notifications for the next few hours when woken up by iOS
+        print("🔄 Background fetch triggered by iOS")
+        // Schedule notifications for the next 3 days when woken up by iOS (hybrid approach)
         NotificationManager.shared.scheduleNotificationsForNextHours(hours: 4)
+        print("🔄 Background fetch completed")
         completionHandler(.newData)
     }
     

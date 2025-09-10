@@ -106,18 +106,23 @@ struct ContentView: View {
         }
         .accentColor(.blue)
         .onAppear {
+            print("📱 ContentView onAppear - app launched")
             loadDataFromCoreData()
             intervalTimer.setEntries(entries)
             // Dismiss all delivered notifications when app appears
             NotificationManager.shared.dismissAllDeliveredNotifications()
-            // Schedule notifications for today when app becomes active
-            NotificationManager.shared.scheduleNotificationsForToday()
+            // Schedule initial notifications if they're enabled
+            if notificationEnabled {
+                print("📱 Notifications enabled - scheduling initial notifications")
+                NotificationManager.shared.scheduleNotificationsForToday()
+            } else {
+                print("📱 Notifications disabled - skipping initial scheduling")
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            print("📱 App became active - dismissing delivered notifications only")
             // Dismiss all delivered notifications when app becomes active
             NotificationManager.shared.dismissAllDeliveredNotifications()
-            // Reschedule notifications when app becomes active (after being backgrounded)
-            NotificationManager.shared.scheduleNotificationsForToday()
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToLogView)) { _ in
             // Navigate to LogView when notification is tapped
@@ -204,13 +209,17 @@ struct ContentView: View {
     }
     
     private func handleNotificationToggleChange(_ enabled: Bool) {
+        print("⚙️ Notification toggle changed to: \(enabled)")
         if enabled {
             // Request notification permission when toggle is turned ON
+            print("⚙️ Requesting notification permission")
             NotificationManager.shared.requestPermission()
             // Schedule notifications for today
+            print("⚙️ Scheduling notifications after enabling")
             NotificationManager.shared.scheduleNotificationsForToday()
         } else {
             // Cancel all notifications when toggle is turned OFF
+            print("⚙️ Cancelling all notifications after disabling")
             NotificationManager.shared.cancelAllNotifications()
         }
     }
