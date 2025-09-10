@@ -27,6 +27,7 @@ struct CatchUpView: View {
     }
     
     // Track which intervals have been completed by their time period
+    // Note: This could be simplified further by just using the entries array
     @State private var completedIntervals: Set<String> = []
     
     // Helper function to generate a unique key for an interval
@@ -263,10 +264,8 @@ struct CatchUpView: View {
     }
     
     private func handleCompletedIntervalsChange(_ newValue: Set<String>) {
-        // Check if there are no more missed intervals
-        if orderedMissedIntervals.isEmpty && !entries.isEmpty {
-            showCompletionAnimation()
-        }
+        // Simple check: if we have no missed intervals left, show completion
+        checkForCompletion()
     }
     
     private func cleanupCompletedIntervals() {
@@ -285,6 +284,20 @@ struct CatchUpView: View {
     private func handleEntriesChange(_ newValue: [LogEntry]) {
         intervalTimer.updateTimerState(with: entries)
         cleanupCompletedIntervals()
+        checkForCompletion()
+    }
+    
+    private func checkForCompletion() {
+        // Get fresh missed intervals from the timer
+        let currentMissedIntervals = intervalTimer.getMissedIntervals(for: entries)
+        
+        // Show completion if:
+        // 1. No missed intervals remain
+        // 2. We have at least one entry (prevent showing on empty state)
+        // 3. We're not already showing completion
+        if currentMissedIntervals.isEmpty && !entries.isEmpty && !showingCompletion {
+            showCompletionAnimation()
+        }
     }
     
     private var quickTagsSection: some View {
@@ -355,6 +368,9 @@ struct CatchUpView: View {
         
         selectedIntervals.removeAll()
         bulkText = ""
+        
+        // Check if we're now caught up
+        checkForCompletion()
     }
     
     private func showCompletionAnimation() {
