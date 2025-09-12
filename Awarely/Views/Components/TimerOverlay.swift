@@ -33,6 +33,28 @@ struct TimerOverlay: View {
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                     }
+                    
+                    // Catch-up button (show if there are missed intervals, even in overnight gap)
+                    if !intervalTimer.getMissedIntervals(for: entries).isEmpty {
+                        Button(action: { showingCatchUpFlow = true }) {
+                            HStack {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.orange)
+                                
+                                Text("Catch up on \(intervalTimer.getMissedIntervals(for: entries).count) missed intervals")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.orange)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.orange.opacity(0.1))
+                            )
+                        }
+                        .padding(.top, 16)
+                    }
                 }
                 // Check if we're past the logging end time (but not in overnight gap)
                 else if intervalTimer.isPastLoggingEndTime() {
