@@ -60,6 +60,12 @@ struct CatchUpView: View {
                     }
                 }
             }
+            .onTapGesture {
+                // Dismiss keyboard when tapping outside text field
+                isTextFieldFocused = false
+                // Try endEditing as well
+                UIApplication.shared.sendAction(#selector(UIView.endEditing(_:)), to: nil, from: nil, for: nil)
+            }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -70,11 +76,12 @@ struct CatchUpView: View {
             }
             
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Done") {
+                Button("Close") {
                     dismiss()
                 }
                 .fontWeight(.semibold)
             }
+            
         }
     }
     
@@ -138,6 +145,13 @@ struct CatchUpView: View {
                 .font(.body)
                 .submitLabel(.done)
                 .focused($isTextFieldFocused)
+                .onSubmit {
+                    // Dismiss keyboard when Done is pressed
+                    print("TextField onSubmit triggered")
+                    isTextFieldFocused = false
+                    // Try endEditing as well
+                    UIApplication.shared.sendAction(#selector(UIView.endEditing(_:)), to: nil, from: nil, for: nil)
+                }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -242,18 +256,6 @@ struct CatchUpView: View {
                     completionOverlay
                 }
             }
-            .onSubmit {
-                // Dismiss keyboard when Done is pressed
-                isTextFieldFocused = false
-                // Force dismiss keyboard as backup
-                DispatchQueue.main.async {
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                }
-            }
-            .onTapGesture {
-                // Dismiss keyboard when tapping outside text field
-                isTextFieldFocused = false
-            }
         }
         .onChange(of: completedIntervals) { _, newValue in
             handleCompletedIntervalsChange(newValue)
@@ -348,7 +350,6 @@ struct CatchUpView: View {
         
         for index in selectedIntervals {
             guard index < orderedMissedIntervals.count else { continue }
-            let interval = orderedMissedIntervals[index]
             
             // Find the corresponding interval in the original chronological order
             // Since orderedMissedIntervals is reversed, we need to map the index correctly

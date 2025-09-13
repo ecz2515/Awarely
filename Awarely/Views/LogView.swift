@@ -238,14 +238,6 @@ struct LogView: View {
                         }
                 }
             }
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { 
-                        isFieldFocused = false 
-                    }
-                }
-            }
         }
 
         .onChange(of: entries) { _, _ in
@@ -354,13 +346,12 @@ struct LogView: View {
             VStack(spacing: 12) {
                 TextField("Describe what you accomplished",
                           text: $newEntry,
-                          axis: .vertical) // ← make it multi-line
+                          axis: .horizontal) // ← make it single-line
                     .textInputAutocapitalization(.sentences)
                     .disableAutocorrection(false)
                     .focused($isFieldFocused)
-                    .submitLabel(.return)
+                    .submitLabel(.done)
                     .font(.body)
-                    .lineLimit(3...6) // ← works with axis:.vertical
                     .padding(.horizontal, 16)
                     .padding(.vertical, 20)
                     .frame(minHeight: 60)

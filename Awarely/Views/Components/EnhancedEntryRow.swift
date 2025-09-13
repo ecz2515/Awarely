@@ -230,13 +230,12 @@ struct EnhancedEntryRow: View {
                 .foregroundStyle(.primary)
             
             VStack(spacing: 12) {
-                TextField("Describe your activity...", text: $draftText, axis: .vertical)
+                TextField("Describe your activity...", text: $draftText, axis: .horizontal)
                     .textInputAutocapitalization(.sentences)
                     .disableAutocorrection(false)
                     .focused($isTextFieldFocused)
                     .submitLabel(.done)
                     .font(.body)
-                    .lineLimit(3...8)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
                     .background(
