@@ -418,7 +418,7 @@ class NotificationManager: ObservableObject {
             print("⏰ Day \(dayOffset) - First logging reminder at: \(currentInterval)")
             var dayScheduledCount = 0
             
-            while currentInterval < endTime {
+            while currentInterval <= endTime {
                 // Only schedule if the interval is in the future
                 if currentInterval > now {
                     scheduleLoggingReminder(at: currentInterval)
