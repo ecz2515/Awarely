@@ -343,16 +343,25 @@ struct CatchUpView: View {
         let text = bulkText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         
+        // Get the original missed intervals in chronological order (not reversed)
+        let originalMissedIntervals = intervalTimer.getMissedIntervals(for: entries)
+        
         for index in selectedIntervals {
             guard index < orderedMissedIntervals.count else { continue }
             let interval = orderedMissedIntervals[index]
+            
+            // Find the corresponding interval in the original chronological order
+            // Since orderedMissedIntervals is reversed, we need to map the index correctly
+            let originalIndex = originalMissedIntervals.count - 1 - index
+            guard originalIndex >= 0 && originalIndex < originalMissedIntervals.count else { continue }
+            let originalInterval = originalMissedIntervals[originalIndex]
             
             let newEntry = LogEntry(
                 text: text,
                 tags: [],
                 timestamp: Date(),
-                timePeriodStart: interval.start,
-                timePeriodEnd: interval.end
+                timePeriodStart: originalInterval.start,
+                timePeriodEnd: originalInterval.end
             )
             
             // Save to Core Data first
@@ -362,7 +371,7 @@ struct CatchUpView: View {
             entries.insert(newEntry, at: 0)
             
             // Mark this interval as completed using its time period as key
-            let intervalKey = intervalKey(for: interval)
+            let intervalKey = intervalKey(for: originalInterval)
             completedIntervals.insert(intervalKey)
         }
         
