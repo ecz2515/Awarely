@@ -166,6 +166,62 @@ class NotificationManager: ObservableObject {
         }
     }
     
+    func debugScheduledNotifications() {
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            DispatchQueue.main.async {
+                print("🔍 DEBUG: Scheduled Notifications (\(requests.count) total)")
+                
+                if requests.isEmpty {
+                    print("   ❌ No notifications scheduled!")
+                    return
+                }
+                
+                let sortedRequests = requests.sorted { request1, request2 in
+                    guard let trigger1 = request1.trigger as? UNCalendarNotificationTrigger,
+                          let trigger2 = request2.trigger as? UNCalendarNotificationTrigger,
+                          let date1 = trigger1.nextTriggerDate(),
+                          let date2 = trigger2.nextTriggerDate() else {
+                        return false
+                    }
+                    return date1 < date2
+                }
+                
+                for (index, request) in sortedRequests.enumerated() {
+                    if let trigger = request.trigger as? UNCalendarNotificationTrigger,
+                       let nextTriggerDate = trigger.nextTriggerDate() {
+                        let type = request.identifier.hasPrefix("day-started") ? "🌅 Day Start" : "🔔 Logging"
+                        let timeUntil = nextTriggerDate.timeIntervalSince(Date())
+                        let timeString = timeUntil > 0 ? "in \(Int(timeUntil/60))m" : "\(Int(-timeUntil/60))m ago"
+                        
+                        print("   \(index + 1). \(type): \(nextTriggerDate) (\(timeString))")
+                        print("      Title: \(request.content.title)")
+                        print("      Body: \(request.content.body)")
+                    }
+                }
+            }
+        }
+    }
+    
+    func debugNotificationScheduling() {
+        print("🔍 DEBUG: Notification Scheduling Analysis")
+        debugNotificationTimes()
+        debugScheduledNotifications()
+        
+        // Check if we're in the notification time window
+        let now = Date()
+        let isInWindow = isWithinNotificationTimeWindow(now)
+        print("   Current time is \(isInWindow ? "WITHIN" : "OUTSIDE") notification window")
+        
+        // Check notification permission
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                print("   Notification permission: \(settings.authorizationStatus.rawValue)")
+                print("   Alert setting: \(settings.alertSetting.rawValue)")
+                print("   Sound setting: \(settings.soundSetting.rawValue)")
+            }
+        }
+    }
+    
     func getNotificationAuthorizationStatus(completion: @escaping (UNAuthorizationStatus) -> Void) {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             DispatchQueue.main.async {
@@ -346,14 +402,12 @@ class NotificationManager: ObservableObject {
             print("🕘 Day \(dayOffset) - Start time: \(startTime), End time: \(endTime)")
             
             // Schedule day started notification at the start time
-            // Only schedule if it's for today and the start time hasn't passed by more than 1 hour
-            let oneHourAgo = now.addingTimeInterval(-60 * 60)
-            
-            if startTime > oneHourAgo {
+            // Only schedule if it's in the future (not in the past)
+            if startTime > now {
                 print("✅ Scheduling day started notification for \(startTime)")
                 scheduleDayStartedNotification(at: startTime)
             } else {
-                print("⏭️ Skipping day started notification for \(startTime) - too far in the past")
+                print("⏭️ Skipping day started notification for \(startTime) - in the past")
             }
             
             // Calculate all 30-minute intervals within the time window
@@ -394,6 +448,7 @@ class NotificationManager: ObservableObject {
         
         print("🔄 Rescheduled notifications due to settings change")
     }
+    
 
     // MARK: - Logging Grace Period Validation
     

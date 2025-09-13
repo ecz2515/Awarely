@@ -6,6 +6,20 @@
 //
 
 import SwiftUI
+import UserNotifications
+
+struct ScheduledNotification: Identifiable {
+    let id: String
+    let title: String
+    let body: String
+    let scheduledDate: Date
+    let type: NotificationType
+    
+    enum NotificationType {
+        case dayStarted
+        case loggingReminder
+    }
+}
 
 enum NotificationSchedule: String, CaseIterable {
     case daily = "Daily"
@@ -47,6 +61,10 @@ struct ProfileView: View {
     @State private var showingPermissionAlert = false
     @State private var notificationPermissionStatus: UNAuthorizationStatus = .notDetermined
     
+    // Notification log states
+    @State private var scheduledNotifications: [ScheduledNotification] = []
+    @State private var showingNotificationLog = false
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -82,6 +100,9 @@ struct ProfileView: View {
                         // Smart Features Section
                         smartFeaturesSection
                         
+                        // Notification Log Section
+                        notificationLogSection
+                        
                         Spacer(minLength: 40)
                     }
                     .padding(.horizontal, 20)
@@ -93,6 +114,7 @@ struct ProfileView: View {
         .onAppear {
             loadSettingsFromCoreData()
             checkNotificationPermissionStatus()
+            loadScheduledNotifications()
         }
         .onChange(of: reminderInterval) { 
             // Ensure grace period doesn't exceed reminder interval
@@ -702,6 +724,73 @@ struct ProfileView: View {
         }
     }
     
+    private var notificationLogSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Notification Log")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                
+                Spacer()
+                
+                HStack(spacing: 12) {
+                    Button("Debug") {
+                        NotificationManager.shared.debugNotificationScheduling()
+                        loadScheduledNotifications()
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    
+                    Button("Refresh") {
+                        loadScheduledNotifications()
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+                }
+            }
+            
+            VStack(spacing: 12) {
+                if scheduledNotifications.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "bell.slash")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                        
+                        Text("No scheduled notifications")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        Text("Notifications will appear here when scheduled")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.vertical, 20)
+                } else {
+                    ForEach(scheduledNotifications.prefix(10)) { notification in
+                        NotificationLogRow(notification: notification)
+                    }
+                    
+                    if scheduledNotifications.count > 10 {
+                        Text("... and \(scheduledNotifications.count - 10) more")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 8)
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(.quaternary, lineWidth: 0.5)
+                )
+        )
+    }
+    
     // MARK: - Computed Properties
     
     private var notificationStatusText: String {
@@ -954,6 +1043,103 @@ struct ProfileView: View {
     private func handleNotificationToggleOff() {
         NotificationManager.shared.cancelAllNotifications()
         checkNotificationPermissionStatus()
+    }
+    
+    private func loadScheduledNotifications() {
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            DispatchQueue.main.async {
+                var notifications: [ScheduledNotification] = []
+                
+                for request in requests {
+                    if let trigger = request.trigger as? UNCalendarNotificationTrigger,
+                       let nextTriggerDate = trigger.nextTriggerDate() {
+                        
+                        let type: ScheduledNotification.NotificationType
+                        if request.identifier.hasPrefix("day-started") {
+                            type = .dayStarted
+                        } else {
+                            type = .loggingReminder
+                        }
+                        
+                        let notification = ScheduledNotification(
+                            id: request.identifier,
+                            title: request.content.title,
+                            body: request.content.body,
+                            scheduledDate: nextTriggerDate,
+                            type: type
+                        )
+                        
+                        notifications.append(notification)
+                    }
+                }
+                
+                // Sort by scheduled date
+                notifications.sort { $0.scheduledDate < $1.scheduledDate }
+                self.scheduledNotifications = notifications
+            }
+        }
+    }
+}
+
+// MARK: - NotificationLogRow
+
+struct NotificationLogRow: View {
+    let notification: ScheduledNotification
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Icon based on notification type
+            Image(systemName: notification.type == .dayStarted ? "sunrise.fill" : "bell.fill")
+                .font(.caption)
+                .foregroundStyle(notification.type == .dayStarted ? .orange : .blue)
+                .frame(width: 20)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(notification.title)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                
+                Text(notification.body)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(formatNotificationTime(notification.scheduledDate))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.primary)
+                
+                Text(formatNotificationDate(notification.scheduledDate))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private func formatNotificationTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+    
+    private func formatNotificationDate(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        if calendar.isDate(date, inSameDayAs: now) {
+            return "Today"
+        } else if calendar.isDate(date, inSameDayAs: calendar.date(byAdding: .day, value: 1, to: now) ?? now) {
+            return "Tomorrow"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d"
+            return formatter.string(from: date)
+        }
     }
 }
 
