@@ -23,7 +23,9 @@ struct CatchUpView: View {
     
     // Order missed intervals latest first - use current missed intervals
     private var orderedMissedIntervals: [(start: Date, end: Date)] {
-        return intervalTimer.getMissedIntervals(for: entries).reversed()
+        let missedIntervals = intervalTimer.getMissedIntervals(for: entries)
+        let reversed = Array(missedIntervals.reversed())
+        return reversed
     }
     
     // Track which intervals have been completed by their time period
@@ -147,7 +149,6 @@ struct CatchUpView: View {
                 .focused($isTextFieldFocused)
                 .onSubmit {
                     // Dismiss keyboard when Done is pressed
-                    print("TextField onSubmit triggered")
                     isTextFieldFocused = false
                     // Try endEditing as well
                     UIApplication.shared.sendAction(#selector(UIView.endEditing(_:)), to: nil, from: nil, for: nil)
@@ -298,6 +299,7 @@ struct CatchUpView: View {
         // 2. We have at least one entry (prevent showing on empty state)
         // 3. We're not already showing completion
         if currentMissedIntervals.isEmpty && !entries.isEmpty && !showingCompletion {
+            print("🔍 [CatchUp] All caught up! Showing completion animation")
             showCompletionAnimation()
         }
     }
@@ -345,17 +347,32 @@ struct CatchUpView: View {
         let text = bulkText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         
-        // Get the original missed intervals in chronological order (not reversed)
+        print("🔍 [CatchUp] Logging \(selectedIntervals.count) intervals: '\(text)'")
+        print("🔍 [CatchUp] Selected indices: \(selectedIntervals.sorted())")
+        
+        // Capture the intervals at the start to avoid them changing during the loop
         let originalMissedIntervals = intervalTimer.getMissedIntervals(for: entries)
+        let stableOrderedMissedIntervals = Array(originalMissedIntervals.reversed())
+        print("🔍 [CatchUp] Original missed intervals count: \(originalMissedIntervals.count)")
+        print("🔍 [CatchUp] Stable ordered intervals count: \(stableOrderedMissedIntervals.count)")
         
         for index in selectedIntervals {
-            guard index < orderedMissedIntervals.count else { continue }
+            print("🔍 [CatchUp] Processing selected index: \(index)")
+            guard index < stableOrderedMissedIntervals.count else { 
+                print("❌ [CatchUp] Index \(index) >= stableOrderedMissedIntervals.count (\(stableOrderedMissedIntervals.count)), skipping")
+                continue 
+            }
             
             // Find the corresponding interval in the original chronological order
-            // Since orderedMissedIntervals is reversed, we need to map the index correctly
+            // Since stableOrderedMissedIntervals is reversed, we need to map the index correctly
             let originalIndex = originalMissedIntervals.count - 1 - index
-            guard originalIndex >= 0 && originalIndex < originalMissedIntervals.count else { continue }
+            print("🔍 [CatchUp] Mapped index \(index) -> originalIndex \(originalIndex)")
+            guard originalIndex >= 0 && originalIndex < originalMissedIntervals.count else { 
+                print("❌ [CatchUp] OriginalIndex \(originalIndex) out of bounds [0, \(originalMissedIntervals.count)), skipping")
+                continue 
+            }
             let originalInterval = originalMissedIntervals[originalIndex]
+            print("🔍 [CatchUp] Using original interval: \(originalInterval.start.formatted(date: .omitted, time: .shortened)) - \(originalInterval.end.formatted(date: .omitted, time: .shortened))")
             
             let newEntry = LogEntry(
                 text: text,
@@ -364,6 +381,8 @@ struct CatchUpView: View {
                 timePeriodStart: originalInterval.start,
                 timePeriodEnd: originalInterval.end
             )
+            
+            print("🔍 [CatchUp] Created LogEntry for: \(newEntry.timePeriodStart.formatted(date: .omitted, time: .shortened)) - \(newEntry.timePeriodEnd.formatted(date: .omitted, time: .shortened))")
             
             // Save to Core Data first
             coreDataManager.addLogEntry(newEntry)
@@ -374,8 +393,10 @@ struct CatchUpView: View {
             // Mark this interval as completed using its time period as key
             let intervalKey = intervalKey(for: originalInterval)
             completedIntervals.insert(intervalKey)
+            print("🔍 [CatchUp] Marked interval as completed with key: \(intervalKey)")
         }
         
+        print("🔍 [CatchUp] Final completedIntervals count: \(completedIntervals.count)")
         selectedIntervals.removeAll()
         bulkText = ""
         
