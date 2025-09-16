@@ -129,16 +129,29 @@ struct ProfileView: View {
                 title: "Start Time",
                 selectedTime: $tempStartTime,
                 onSave: {
-                    print("⚙️ Saving start time: \(tempStartTime)")
+                    print("⚙️ ===== START TIME CHANGE =====")
+                    print("⚙️ New start time selected: \(tempStartTime)")
+                    
+                    // Get current settings for comparison
                     let userProfile = coreDataManager.fetchOrCreateUserProfile()
+                    if let oldStartTime = userProfile.notificationStartTime {
+                        print("⚙️ Previous start time: \(oldStartTime)")
+                    } else {
+                        print("⚙️ No previous start time set")
+                    }
+                    
                     userProfile.notificationStartTime = tempStartTime
                     coreDataManager.saveUserProfile()
-                    print("⚙️ Start time saved successfully")
+                    print("⚙️ Start time saved to CoreData: \(tempStartTime)")
                     
                     // Reschedule notifications with new time
                     if notificationEnabled {
+                        print("⚙️ Notifications enabled - rescheduling...")
                         NotificationManager.shared.rescheduleNotificationsForSettingsChange()
+                    } else {
+                        print("⚙️ Notifications disabled - skipping reschedule")
                     }
+                    print("⚙️ ===== START TIME CHANGE COMPLETE =====")
                 }
             )
         }
@@ -147,16 +160,29 @@ struct ProfileView: View {
                 title: "End Time",
                 selectedTime: $tempEndTime,
                 onSave: {
-                    print("⚙️ Saving end time: \(tempEndTime)")
+                    print("⚙️ ===== END TIME CHANGE =====")
+                    print("⚙️ New end time selected: \(tempEndTime)")
+                    
+                    // Get current settings for comparison
                     let userProfile = coreDataManager.fetchOrCreateUserProfile()
+                    if let oldEndTime = userProfile.notificationEndTime {
+                        print("⚙️ Previous end time: \(oldEndTime)")
+                    } else {
+                        print("⚙️ No previous end time set")
+                    }
+                    
                     userProfile.notificationEndTime = tempEndTime
                     coreDataManager.saveUserProfile()
-                    print("⚙️ End time saved successfully")
+                    print("⚙️ End time saved to CoreData: \(tempEndTime)")
                     
                     // Reschedule notifications with new time
                     if notificationEnabled {
+                        print("⚙️ Notifications enabled - rescheduling...")
                         NotificationManager.shared.rescheduleNotificationsForSettingsChange()
+                    } else {
+                        print("⚙️ Notifications disabled - skipping reschedule")
                     }
+                    print("⚙️ ===== END TIME CHANGE COMPLETE =====")
                 }
             )
         }
@@ -1046,11 +1072,13 @@ struct ProfileView: View {
     }
     
     private func loadScheduledNotifications() {
+        print("📋 ===== LOADING SCHEDULED NOTIFICATIONS =====")
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
             DispatchQueue.main.async {
+                print("📋 Found \(requests.count) pending notification requests")
                 var notifications: [ScheduledNotification] = []
                 
-                for request in requests {
+                for (index, request) in requests.enumerated() {
                     if let trigger = request.trigger as? UNCalendarNotificationTrigger,
                        let nextTriggerDate = trigger.nextTriggerDate() {
                         
@@ -1070,12 +1098,21 @@ struct ProfileView: View {
                         )
                         
                         notifications.append(notification)
+                        print("📋 \(index + 1). \(type == .dayStarted ? "🌅 Day Start" : "🔔 Logging") - \(nextTriggerDate)")
+                    } else {
+                        print("📋 \(index + 1). ❌ Invalid trigger or date for request: \(request.identifier)")
                     }
                 }
                 
                 // Sort by scheduled date
                 notifications.sort { $0.scheduledDate < $1.scheduledDate }
                 self.scheduledNotifications = notifications
+                
+                print("📋 Loaded \(notifications.count) valid scheduled notifications")
+                if let firstNotification = notifications.first {
+                    print("📋 Next notification: \(firstNotification.scheduledDate) (\(firstNotification.type == .dayStarted ? "Day Start" : "Logging"))")
+                }
+                print("📋 ===== LOADING COMPLETE =====")
             }
         }
     }

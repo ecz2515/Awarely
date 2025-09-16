@@ -88,12 +88,8 @@ class NotificationManager: ObservableObject {
     func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             DispatchQueue.main.async {
-                if granted {
-                    print("✅ Notification permission granted")
-                } else if let error = error {
-                    print("❌ Notification permission error: \(error)")
-                } else {
-                    print("❌ Notification permission denied by user")
+                if let error = error {
+                    print("Notification permission error: \(error)")
                 }
             }
         }
@@ -102,21 +98,18 @@ class NotificationManager: ObservableObject {
     func checkNotificationStatus() {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             DispatchQueue.main.async {
-                print("📱 Notification Settings:")
-                print("   Authorization Status: \(settings.authorizationStatus.rawValue)")
-                print("   Alert Setting: \(settings.alertSetting.rawValue)")
-                print("   Badge Setting: \(settings.badgeSetting.rawValue)")
-                print("   Sound Setting: \(settings.soundSetting.rawValue)")
+                // Only log if there's an issue
+                if settings.authorizationStatus != .authorized {
+                    print("Notification authorization status: \(settings.authorizationStatus.rawValue)")
+                }
             }
         }
         
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
             DispatchQueue.main.async {
-                print("📅 Pending Notifications: \(requests.count)")
-                for request in requests {
-                    if let trigger = request.trigger as? UNCalendarNotificationTrigger {
-                        print("   - \(request.identifier): \(trigger.nextTriggerDate() ?? Date())")
-                    }
+                // Only log if there are no pending notifications when there should be some
+                if requests.isEmpty {
+                    print("No pending notifications scheduled")
                 }
             }
         }
@@ -124,102 +117,25 @@ class NotificationManager: ObservableObject {
     
     func debugNotificationTimes() {
         let userProfile = CoreDataManager.shared.getUserProfile()
-        let calendar = Calendar.current
-        let now = Date()
         
-        print("🔍 DEBUG: Current notification settings")
-        print("   Current time: \(now)")
-        print("   Current timezone: \(TimeZone.current.identifier)")
-        
-        if let startTime = userProfile?.notificationStartTime {
-            print("   Saved start time: \(startTime)")
-            let startComponents = calendar.dateComponents([.hour, .minute], from: startTime)
-            print("   Start time components: \(startComponents.hour ?? 0):\(String(format: "%02d", startComponents.minute ?? 0))")
-        } else {
-            print("   ❌ No saved start time - notifications will not be scheduled")
-        }
-        
-        if let endTime = userProfile?.notificationEndTime {
-            print("   Saved end time: \(endTime)")
-            let endComponents = calendar.dateComponents([.hour, .minute], from: endTime)
-            print("   End time components: \(endComponents.hour ?? 0):\(String(format: "%02d", endComponents.minute ?? 0))")
-        } else {
-            print("   ❌ No saved end time - notifications will not be scheduled")
-        }
-        
-        // Show what the time window would be for today (only if both times are set)
-        if let startTime = userProfile?.notificationStartTime,
-           let endTime = userProfile?.notificationEndTime {
-            let today = calendar.startOfDay(for: now)
-            let startComponents = calendar.dateComponents([.hour, .minute], from: startTime)
-            let endComponents = calendar.dateComponents([.hour, .minute], from: endTime)
-            
-            if let todayStart = calendar.date(bySettingHour: startComponents.hour ?? 0, minute: startComponents.minute ?? 0, second: 0, of: today),
-               let todayEnd = calendar.date(bySettingHour: endComponents.hour ?? 0, minute: endComponents.minute ?? 0, second: 0, of: today) {
-                print("   Today's notification window: \(todayStart) to \(todayEnd)")
-                print("   Is current time within window? \(isWithinNotificationTimeWindow(now))")
-            } else {
-                print("   ❌ Could not create today's time window")
-            }
-        } else {
-            print("   ❌ Cannot show time window - notification times not set")
+        if userProfile?.notificationStartTime == nil || userProfile?.notificationEndTime == nil {
+            print("Notification times not set - notifications will not be scheduled")
         }
     }
     
     func debugScheduledNotifications() {
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
             DispatchQueue.main.async {
-                print("🔍 DEBUG: Scheduled Notifications (\(requests.count) total)")
-                
                 if requests.isEmpty {
-                    print("   ❌ No notifications scheduled!")
-                    return
-                }
-                
-                let sortedRequests = requests.sorted { request1, request2 in
-                    guard let trigger1 = request1.trigger as? UNCalendarNotificationTrigger,
-                          let trigger2 = request2.trigger as? UNCalendarNotificationTrigger,
-                          let date1 = trigger1.nextTriggerDate(),
-                          let date2 = trigger2.nextTriggerDate() else {
-                        return false
-                    }
-                    return date1 < date2
-                }
-                
-                for (index, request) in sortedRequests.enumerated() {
-                    if let trigger = request.trigger as? UNCalendarNotificationTrigger,
-                       let nextTriggerDate = trigger.nextTriggerDate() {
-                        let type = request.identifier.hasPrefix("day-started") ? "🌅 Day Start" : "🔔 Logging"
-                        let timeUntil = nextTriggerDate.timeIntervalSince(Date())
-                        let timeString = timeUntil > 0 ? "in \(Int(timeUntil/60))m" : "\(Int(-timeUntil/60))m ago"
-                        
-                        print("   \(index + 1). \(type): \(nextTriggerDate) (\(timeString))")
-                        print("      Title: \(request.content.title)")
-                        print("      Body: \(request.content.body)")
-                    }
+                    print("No notifications scheduled")
                 }
             }
         }
     }
     
     func debugNotificationScheduling() {
-        print("🔍 DEBUG: Notification Scheduling Analysis")
         debugNotificationTimes()
         debugScheduledNotifications()
-        
-        // Check if we're in the notification time window
-        let now = Date()
-        let isInWindow = isWithinNotificationTimeWindow(now)
-        print("   Current time is \(isInWindow ? "WITHIN" : "OUTSIDE") notification window")
-        
-        // Check notification permission
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            DispatchQueue.main.async {
-                print("   Notification permission: \(settings.authorizationStatus.rawValue)")
-                print("   Alert setting: \(settings.alertSetting.rawValue)")
-                print("   Sound setting: \(settings.soundSetting.rawValue)")
-            }
-        }
     }
     
     func getNotificationAuthorizationStatus(completion: @escaping (UNAuthorizationStatus) -> Void) {
@@ -237,22 +153,16 @@ class NotificationManager: ObservableObject {
     }
     
     func scheduleLoggingReminder(at date: Date) {
-        print("🔔 Attempting to schedule logging reminder for \(date)")
-        
         // Check if notifications are enabled in user settings
         let userProfile = CoreDataManager.shared.getUserProfile()
         if let profile = userProfile, !profile.notificationEnabled {
-            print("⚠️ Notification not scheduled for \(date) - notifications disabled in settings")
             return
         }
         
         // Check if the notification is within the allowed time window
         if !isWithinNotificationTimeWindow(date) {
-            print("⚠️ Notification not scheduled for \(date) - outside notification time window")
             return
         }
-        
-        print("✅ Logging reminder passed all checks for \(date)")
         
         let content = UNMutableNotificationContent()
         content.title = notificationMessages.randomElement() ?? "Time to Log Your Activity"
@@ -262,14 +172,17 @@ class NotificationManager: ObservableObject {
         content.threadIdentifier = "awarely-logging"
         
         // Create trigger for the specific date
+        let dateComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        
         let trigger = UNCalendarNotificationTrigger(
-            dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date),
+            dateMatching: dateComponents,
             repeats: false
         )
         
         // Create request
+        let identifier = "logging-reminder-\(date.timeIntervalSince1970)"
         let request = UNNotificationRequest(
-            identifier: "logging-reminder-\(date.timeIntervalSince1970)",
+            identifier: identifier,
             content: content,
             trigger: trigger
         )
@@ -278,25 +191,18 @@ class NotificationManager: ObservableObject {
         UNUserNotificationCenter.current().add(request) { error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("❌ Error scheduling notification: \(error)")
-                } else {
-                    print("✅ Notification scheduled for \(date)")
+                    print("Error scheduling notification: \(error)")
                 }
             }
         }
     }
     
     func scheduleDayStartedNotification(at date: Date) {
-        print("🌅 Attempting to schedule day started notification for \(date)")
-        
         // Check if notifications are enabled in user settings
         let userProfile = CoreDataManager.shared.getUserProfile()
         if let profile = userProfile, !profile.notificationEnabled {
-            print("⚠️ Day started notification not scheduled for \(date) - notifications disabled in settings")
             return
         }
-        
-        print("✅ Day started notification passed all checks for \(date)")
         
         let content = UNMutableNotificationContent()
         content.title = dayStartedMessages.randomElement() ?? "Good morning! Your logging day begins now"
@@ -322,23 +228,18 @@ class NotificationManager: ObservableObject {
         UNUserNotificationCenter.current().add(request) { error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("❌ Error scheduling day started notification: \(error)")
-                } else {
-                    print("✅ Day started notification scheduled for \(date)")
+                    print("Error scheduling day started notification: \(error)")
                 }
             }
         }
     }
     
     func cancelAllNotifications() {
-        print("🗑️ Cancelling all pending notifications")
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
-        print("✅ All pending notifications cancelled")
     }
     
     func dismissAllDeliveredNotifications() {
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
-        print("✅ Dismissed all delivered notifications")
     }
     
     func cancelNotification(for date: Date) {
@@ -349,65 +250,75 @@ class NotificationManager: ObservableObject {
     // MARK: - Enhanced Scheduling for Background Fetch
     
     func scheduleNotificationsForNextHours(hours: Int) {
-        print("🔄 Background fetch triggered - scheduling notifications for next 3 days")
         // For background fetch, schedule for the next 3 days to ensure day boundary coverage
         // This ensures notifications work even if background fetch is unreliable
         scheduleNotificationsForNextDays(days: 3)
     }
     
     func scheduleNotificationsForToday() {
-        print("📱 App launch/settings change - scheduling notifications for next 3 days")
         // Schedule notifications for the next 3 days to ensure continuous coverage
         scheduleNotificationsForNextDays(days: 3)
     }
     
     func scheduleNotificationsForNextDays(days: Int = 7) {
-        print("📅 Starting to schedule notifications for next \(days) days")
         let calendar = Calendar.current
         let now = Date()
-        print("⏰ Current time: \(now)")
         
         let userProfile = CoreDataManager.shared.getUserProfile()
         
         // Check if notification times are set - if not, don't schedule anything
         guard let savedStartTime = userProfile?.notificationStartTime,
               let savedEndTime = userProfile?.notificationEndTime else {
-            print("⚠️ No notification times set in CoreData - skipping notification scheduling")
+            print("📅 No notification times set - skipping scheduling")
             return
         }
         
+        let startComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+        let endComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
+        
         var totalScheduled = 0
+        var dayStartedScheduled = 0
         
         for dayOffset in 0..<days {
-            guard let futureDate = calendar.date(byAdding: .day, value: dayOffset, to: now) else { continue }
-            print("📆 Processing day \(dayOffset): \(futureDate)")
+            guard let futureDate = calendar.date(byAdding: .day, value: dayOffset, to: now) else { 
+                continue 
+            }
             
             // Use the saved times and set them for the target day
             let targetDay = calendar.startOfDay(for: futureDate)
-            let startComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
-            let endComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
             
             guard let startTime = calendar.date(bySettingHour: startComponents.hour ?? 0, 
                                               minute: startComponents.minute ?? 0, 
                                               second: 0, 
-                                              of: targetDay),
-                  let endTime = calendar.date(bySettingHour: endComponents.hour ?? 0, 
-                                            minute: endComponents.minute ?? 0, 
-                                            second: 0, 
-                                            of: targetDay) else {
-                print("⚠️ Could not create start/end times for day \(dayOffset)")
+                                              of: targetDay) else {
                 continue
             }
             
-            print("🕘 Day \(dayOffset) - Start time: \(startTime), End time: \(endTime)")
+            // Handle end time - if it's earlier than start time, it should be the next day
+            let endTime: Date
+            if let tempEndTime = calendar.date(bySettingHour: endComponents.hour ?? 0, 
+                                            minute: endComponents.minute ?? 0, 
+                                            second: 0, 
+                                            of: targetDay) {
+                // If end time is earlier than start time, it's the next day
+                if tempEndTime <= startTime {
+                    if let nextDayEndTime = calendar.date(byAdding: .day, value: 1, to: tempEndTime) {
+                        endTime = nextDayEndTime
+                    } else {
+                        continue
+                    }
+                } else {
+                    endTime = tempEndTime
+                }
+            } else {
+                continue
+            }
             
             // Schedule day started notification at the start time
             // Only schedule if it's in the future (not in the past)
             if startTime > now {
-                print("✅ Scheduling day started notification for \(startTime)")
                 scheduleDayStartedNotification(at: startTime)
-            } else {
-                print("⏭️ Skipping day started notification for \(startTime) - in the past")
+                dayStartedScheduled += 1
             }
             
             // Calculate all 30-minute intervals within the time window
@@ -415,38 +326,39 @@ class NotificationManager: ObservableObject {
             var currentInterval = startTime.addingTimeInterval(30 * 60) // First logging reminder is 30 minutes after day starts
             let intervalDuration: TimeInterval = 30 * 60 // 30 minutes
             
-            print("⏰ Day \(dayOffset) - First logging reminder at: \(currentInterval)")
-            var dayScheduledCount = 0
-            
             while currentInterval <= endTime {
                 // Only schedule if the interval is in the future
                 if currentInterval > now {
                     scheduleLoggingReminder(at: currentInterval)
                     totalScheduled += 1
-                    dayScheduledCount += 1
-                } else {
-                    print("⏭️ Skipping past interval: \(currentInterval)")
                 }
                 currentInterval = currentInterval.addingTimeInterval(intervalDuration)
             }
-            
-            print("📊 Day \(dayOffset) scheduled \(dayScheduledCount) logging reminders")
         }
         
-        print("📅 Scheduled \(totalScheduled) notifications for next \(days) days")
+        print("📅 Scheduled \(dayStartedScheduled) day-started + \(totalScheduled) logging notifications for next \(days) days")
     }
     
     // MARK: - Settings Change Handling
     
     func rescheduleNotificationsForSettingsChange() {
-        print("⚙️ Settings changed - rescheduling all notifications")
+        print("🔧 Settings change detected - rescheduling notifications")
+        
+        // Log the new settings
+        let userProfile = CoreDataManager.shared.getUserProfile()
+        if let startTime = userProfile?.notificationStartTime,
+           let endTime = userProfile?.notificationEndTime {
+            let calendar = Calendar.current
+            let startComponents = calendar.dateComponents([.hour, .minute], from: startTime)
+            let endComponents = calendar.dateComponents([.hour, .minute], from: endTime)
+            print("🔧 New times: \(startComponents.hour ?? 0):\(String(format: "%02d", startComponents.minute ?? 0)) - \(endComponents.hour ?? 0):\(String(format: "%02d", endComponents.minute ?? 0))")
+        }
+        
         // Cancel all existing notifications
         cancelAllNotifications()
         
         // Reschedule with new settings for the next 3 days
         scheduleNotificationsForNextDays(days: 3)
-        
-        print("🔄 Rescheduled notifications due to settings change")
     }
     
 
@@ -476,35 +388,89 @@ class NotificationManager: ObservableObject {
     private func isWithinNotificationTimeWindow(_ date: Date) -> Bool {
         let calendar = Calendar.current
         let userProfile = CoreDataManager.shared.getUserProfile()
-        print("🕐 Checking if \(date) is within notification time window")
         
         // Check if notification times are set - if not, return false
         guard let savedStartTime = userProfile?.notificationStartTime,
               let savedEndTime = userProfile?.notificationEndTime else {
-            print("🕐 No notification times set - not within window")
             return false
         }
         
-        // Use the saved times for today
-        let today = calendar.startOfDay(for: date)
+        // For cross-day scenarios, we need to check if the date falls within ANY day's notification window
+        // Let's check both the current day and the previous day's window
+        
         let savedStartComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
         let savedEndComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
         
-        guard let notificationStartTime = calendar.date(bySettingHour: savedStartComponents.hour ?? 0, 
-                                                      minute: savedStartComponents.minute ?? 0, 
-                                                      second: 0, 
-                                                      of: today),
-              let notificationEndTime = calendar.date(bySettingHour: savedEndComponents.hour ?? 0, 
-                                                    minute: savedEndComponents.minute ?? 0, 
-                                                    second: 0, 
-                                                    of: today) else {
-            print("🕐 Could not create notification times - not within window")
-            return false
+        // Check current day's window
+        let today = calendar.startOfDay(for: date)
+        if let notificationStartTime = calendar.date(bySettingHour: savedStartComponents.hour ?? 0, 
+                                                   minute: savedStartComponents.minute ?? 0, 
+                                                   second: 0, 
+                                                   of: today) {
+            
+            // Handle end time - if it's earlier than start time, it should be the next day
+            let notificationEndTime: Date
+            if let tempEndTime = calendar.date(bySettingHour: savedEndComponents.hour ?? 0, 
+                                            minute: savedEndComponents.minute ?? 0, 
+                                            second: 0, 
+                                            of: today) {
+                // If end time is earlier than start time, it's the next day
+                if tempEndTime <= notificationStartTime {
+                    if let nextDayEndTime = calendar.date(byAdding: .day, value: 1, to: tempEndTime) {
+                        notificationEndTime = nextDayEndTime
+                    } else {
+                        return false
+                    }
+                } else {
+                    notificationEndTime = tempEndTime
+                }
+            } else {
+                return false
+            }
+            
+            // Check if the date is within the current day's notification time window
+            let isWithinCurrentDay = date >= notificationStartTime && date <= notificationEndTime
+            
+            if isWithinCurrentDay {
+                return true
+            }
         }
         
-        // Check if the date is within the notification time window
-        let isWithin = date >= notificationStartTime && date <= notificationEndTime
-        print("🕐 Time window check: \(date) is \(isWithin ? "WITHIN" : "OUTSIDE") window (\(notificationStartTime) - \(notificationEndTime))")
-        return isWithin
+        // Check previous day's window (for cross-day scenarios)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+        if let prevDayStartTime = calendar.date(bySettingHour: savedStartComponents.hour ?? 0, 
+                                              minute: savedStartComponents.minute ?? 0, 
+                                              second: 0, 
+                                              of: yesterday) {
+            
+            // Handle end time - if it's earlier than start time, it should be the next day (which is today)
+            let prevDayEndTime: Date
+            if let tempEndTime = calendar.date(bySettingHour: savedEndComponents.hour ?? 0, 
+                                            minute: savedEndComponents.minute ?? 0, 
+                                            second: 0, 
+                                            of: yesterday) {
+                // If end time is earlier than start time, it's the next day (today)
+                if tempEndTime <= prevDayStartTime {
+                    if let nextDayEndTime = calendar.date(byAdding: .day, value: 1, to: tempEndTime) {
+                        prevDayEndTime = nextDayEndTime
+                    } else {
+                        return false
+                    }
+                } else {
+                    prevDayEndTime = tempEndTime
+                }
+            } else {
+                return false
+            }
+            
+            // Check if the date is within the previous day's notification time window
+            let isWithinPrevDay = date >= prevDayStartTime && date <= prevDayEndTime
+            
+            if isWithinPrevDay {
+                return true
+            }
+        }
+        
+        return false
     }
 }
