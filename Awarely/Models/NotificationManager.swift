@@ -276,37 +276,40 @@ class NotificationManager: ObservableObject {
         let startComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
         let endComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
         
-        var totalScheduled = 0
-        var dayStartedScheduled = 0
+        // iOS keeps up to 64 pending notifications. Leave headroom for system use; cap at 60.
+        let maxPendingToSchedule = 60
+        
+        // Collect all candidate triggers first
+        enum CandidateType { case dayStarted, logging }
+        struct Candidate {
+            let date: Date
+            let type: CandidateType
+        }
+        var candidates: [Candidate] = []
         
         for dayOffset in 0..<days {
-            guard let futureDate = calendar.date(byAdding: .day, value: dayOffset, to: now) else { 
-                continue 
-            }
-            
-            // Use the saved times and set them for the target day
-            let targetDay = calendar.startOfDay(for: futureDate)
-            
-            guard let startTime = calendar.date(bySettingHour: startComponents.hour ?? 0, 
-                                              minute: startComponents.minute ?? 0, 
-                                              second: 0, 
-                                              of: targetDay) else {
+            guard let futureDate = calendar.date(byAdding: .day, value: dayOffset, to: now) else {
                 continue
             }
             
-            // Handle end time - if it's earlier than start time, it should be the next day
+            let targetDay = calendar.startOfDay(for: futureDate)
+            
+            guard let startTime = calendar.date(bySettingHour: startComponents.hour ?? 0,
+                                               minute: startComponents.minute ?? 0,
+                                               second: 0,
+                                               of: targetDay) else {
+                continue
+            }
+            
+            // Compute end time (may roll to next day if before start)
             let endTime: Date
-            if let tempEndTime = calendar.date(bySettingHour: endComponents.hour ?? 0, 
-                                            minute: endComponents.minute ?? 0, 
-                                            second: 0, 
-                                            of: targetDay) {
-                // If end time is earlier than start time, it's the next day
+            if let tempEndTime = calendar.date(bySettingHour: endComponents.hour ?? 0,
+                                             minute: endComponents.minute ?? 0,
+                                             second: 0,
+                                             of: targetDay) {
                 if tempEndTime <= startTime {
-                    if let nextDayEndTime = calendar.date(byAdding: .day, value: 1, to: tempEndTime) {
-                        endTime = nextDayEndTime
-                    } else {
-                        continue
-                    }
+                    guard let nextDayEndTime = calendar.date(byAdding: .day, value: 1, to: tempEndTime) else { continue }
+                    endTime = nextDayEndTime
                 } else {
                     endTime = tempEndTime
                 }
@@ -314,29 +317,47 @@ class NotificationManager: ObservableObject {
                 continue
             }
             
-            // Schedule day started notification at the start time
-            // Only schedule if it's in the future (not in the past)
             if startTime > now {
-                scheduleDayStartedNotification(at: startTime)
-                dayStartedScheduled += 1
+                candidates.append(Candidate(date: startTime, type: .dayStarted))
             }
             
-            // Calculate all 30-minute intervals within the time window
-            // First logging reminder should be at the END of the first interval (30 minutes after start time)
-            var currentInterval = startTime.addingTimeInterval(30 * 60) // First logging reminder is 30 minutes after day starts
-            let intervalDuration: TimeInterval = 30 * 60 // 30 minutes
-            
+            // Generate 30-min logging reminders
+            var currentInterval = startTime.addingTimeInterval(30 * 60)
+            let intervalDuration: TimeInterval = 30 * 60
             while currentInterval <= endTime {
-                // Only schedule if the interval is in the future
                 if currentInterval > now {
-                    scheduleLoggingReminder(at: currentInterval)
-                    totalScheduled += 1
+                    candidates.append(Candidate(date: currentInterval, type: .logging))
                 }
                 currentInterval = currentInterval.addingTimeInterval(intervalDuration)
             }
         }
         
-        print("📅 Scheduled \(dayStartedScheduled) day-started + \(totalScheduled) logging notifications for next \(days) days")
+        // Sort and cap
+        candidates.sort { $0.date < $1.date }
+        print("📅 Generated \(candidates.count) candidate notifications over next \(days) days")
+        if candidates.count > maxPendingToSchedule {
+            print("📅 Capping to \(maxPendingToSchedule) earliest notifications")
+        }
+        let limited = candidates.prefix(maxPendingToSchedule)
+        
+        // Schedule
+        var dayStartedScheduled = 0
+        var totalLoggingScheduled = 0
+        for candidate in limited {
+            switch candidate.type {
+            case .dayStarted:
+                scheduleDayStartedNotification(at: candidate.date)
+                dayStartedScheduled += 1
+            case .logging:
+                scheduleLoggingReminder(at: candidate.date)
+                totalLoggingScheduled += 1
+            }
+        }
+        
+        if let firstDate = limited.first?.date, let lastDate = limited.last?.date {
+            print("📅 Scheduling window: \(firstDate) → \(lastDate)")
+        }
+        print("📅 Scheduled \(dayStartedScheduled) day-started + \(totalLoggingScheduled) logging notifications (cap \(maxPendingToSchedule)) over next \(days) days")
     }
     
     // MARK: - Settings Change Handling
