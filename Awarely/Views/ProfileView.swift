@@ -65,6 +65,7 @@ struct ProfileView: View {
     @State private var scheduledNotifications: [ScheduledNotification] = []
     @State private var showingNotificationLog = false
     
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -88,20 +89,11 @@ struct ProfileView: View {
                         // Notifications Section
                         notificationsSection
                         
-                        // Logging Settings Section
-                        loggingSettingsSection
-                        
-                        // Export & Sharing Section
-                        exportSharingSection
-                        
-                        // Personalization Section
-                        personalizationSection
-                        
-                        // Smart Features Section
-                        smartFeaturesSection
+                        // Premium Features Section
+                        premiumFeaturesSection
                         
                         // Notification Log Section
-                        notificationLogSection
+                        // notificationLogSection
                         
                         Spacer(minLength: 40)
                     }
@@ -114,7 +106,7 @@ struct ProfileView: View {
         .onAppear {
             loadSettingsFromCoreData()
             checkNotificationPermissionStatus()
-            loadScheduledNotifications()
+            // loadScheduledNotifications()
         }
         .onChange(of: reminderInterval) { 
             // Ensure grace period doesn't exceed reminder interval
@@ -230,7 +222,7 @@ struct ProfileView: View {
                         .font(.title.weight(.bold))
                         .foregroundStyle(.primary)
                     
-                    Text("Building awareness of your time")
+                    Text(personalMantra)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -289,64 +281,7 @@ struct ProfileView: View {
                         }
                 }
                 
-                // Reminder Interval
                 if notificationEnabled {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 6) {
-                                Text("Reminder interval")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.primary)
-                                
-                                if !isPremiumUser {
-                                    Image(systemName: "crown.fill")
-                                        .font(.caption2)
-                                        .foregroundStyle(.orange)
-                                }
-                            }
-                            Text("How often to send reminders")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        HStack(spacing: 8) {
-                            VStack(alignment: .trailing, spacing: 4) {
-                                Text(formatInterval(reminderInterval))
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.primary)
-                                
-                                if reminderInterval != 30 * 60 && !isPremiumUser {
-                                    Text("Premium")
-                                        .font(.caption2)
-                                        .foregroundStyle(.orange)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 4)
-                                                .fill(.orange.opacity(0.2))
-                                        )
-                                }
-                            }
-                            
-                            // Chevron indicator to show it's tappable
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .opacity(0.7)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        if isPremiumUser {
-                            showIntervalPicker()
-                        } else {
-                            // Show premium upgrade prompt for non-30-minute intervals
-                            showPremiumUpgrade()
-                        }
-                    }
-                    
                     // Notification Start Time
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -407,68 +342,6 @@ struct ProfileView: View {
                         showingEndTimePicker = true
                     }
                     
-                    // Notification Schedule
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 6) {
-                                Text("Schedule")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.primary)
-                                
-                                Image(systemName: "crown.fill")
-                                    .font(.caption2)
-                                    .foregroundStyle(.orange)
-                            }
-                            Text("When to send notifications")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        HStack(spacing: 8) {
-                            Text(notificationSchedule.rawValue)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(.primary)
-                            
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .opacity(0.7)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        showPremiumScheduleAlert(notificationSchedule)
-                    }
-                    
-                    // Vacation Mode
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 6) {
-                                Text("Vacation Mode")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.primary)
-                                
-                                Image(systemName: "crown.fill")
-                                    .font(.caption2)
-                                    .foregroundStyle(.orange)
-                            }
-                            Text("Pause all reminders")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        Toggle("", isOn: $vacationModeEnabled)
-                            .tint(.blue)
-                            .disabled(true) // Prevent toggle from moving
-                            .onTapGesture {
-                                // Show premium prompt when trying to turn on
-                                showPremiumScheduleAlert(.custom)
-                            }
-                    }
                 }
             }
             .padding(20)
@@ -483,78 +356,131 @@ struct ProfileView: View {
         }
     }
     
-    private var loggingSettingsSection: some View {
+    private var premiumFeaturesSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Logging Settings")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.primary)
-            
-            VStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Early Grace Period
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Early Grace Period")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
-                        Text("How many minutes beforehand you can log")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        let maxGracePeriod = Int(reminderInterval / 60)
-                        
-                        VStack(spacing: 12) {
-                            HStack {
-                                Text("\(gracePeriod) minutes")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.primary)
-                                Spacer()
-                            }
-                            
-                            Slider(
-                                value: Binding(
-                                    get: { Double(gracePeriod) },
-                                    set: { 
-                                        gracePeriod = Int($0)
-                                        saveSettingsToCoreData()
-                                    }
-                                ),
-                                in: 1...Double(maxGracePeriod),
-                                step: 1
-                            )
-                            .accentColor(.blue)
-                            
-                            HStack {
-                                Text("1 min")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text("\(maxGracePeriod) min")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-            }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(.quaternary, lineWidth: 0.5)
-                    )
-            )
-        }
-    }
-    
-    private var exportSharingSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Export & Sharing")
+            Text("Premium Features")
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(.primary)
             
             VStack(spacing: 16) {
+                // Reminder Interval
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text("Reminder interval")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        Text("How often to send reminders")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 8) {
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text(formatInterval(reminderInterval))
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            if reminderInterval != 30 * 60 && !isPremiumUser {
+                                Text("Premium")
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(.orange.opacity(0.2))
+                                    )
+                            }
+                        }
+                        
+                        // Chevron indicator to show it's tappable
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .opacity(0.7)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if isPremiumUser {
+                        showIntervalPicker()
+                    } else {
+                        // Show premium upgrade prompt for non-30-minute intervals
+                        showPremiumUpgrade()
+                    }
+                }
+                
+                // Notification Schedule
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text("Schedule")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        Text("When to send notifications")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 8) {
+                        Text(notificationSchedule.rawValue)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .opacity(0.7)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    showPremiumScheduleAlert(notificationSchedule)
+                }
+                
+                // Vacation Mode
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text("Vacation Mode")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        Text("Pause all reminders")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Toggle("", isOn: $vacationModeEnabled)
+                        .tint(.blue)
+                        .disabled(true) // Prevent toggle from moving
+                        .onTapGesture {
+                            // Show premium prompt when trying to turn on
+                            showPremiumScheduleAlert(.custom)
+                        }
+                }
+                
                 // Export to Calendar
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -596,7 +522,7 @@ struct ProfileView: View {
                                 .font(.caption2)
                                 .foregroundStyle(.orange)
                         }
-                        Text("Generate and share detailed time tracking reports")
+                        Text("Generate/share detailed time tracking reports")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -612,26 +538,7 @@ struct ProfileView: View {
                 .onTapGesture {
                     showComingSoonAlert("Share Report")
                 }
-            }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(.quaternary, lineWidth: 0.5)
-                    )
-            )
-        }
-    }
-    
-    private var personalizationSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Personalization")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.primary)
-            
-            VStack(spacing: 16) {
+                
                 // Customize Theme
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -644,7 +551,7 @@ struct ProfileView: View {
                                 .font(.caption2)
                                 .foregroundStyle(.orange)
                         }
-                        Text("Personalize the app with custom colors and themes")
+                        Text("Custom colors and themes")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -660,26 +567,7 @@ struct ProfileView: View {
                 .onTapGesture {
                     showComingSoonAlert("Customize Theme")
                 }
-            }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(.quaternary, lineWidth: 0.5)
-                    )
-            )
-        }
-    }
-    
-    private var smartFeaturesSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Smart Features")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.primary)
-            
-            VStack(spacing: 16) {
+                
                 // AI Summaries
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -692,7 +580,7 @@ struct ProfileView: View {
                                 .font(.caption2)
                                 .foregroundStyle(.orange)
                         }
-                        Text("Get intelligent summaries of your daily activities")
+                        Text("Intelligent summaries of your daily activities")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -709,6 +597,46 @@ struct ProfileView: View {
                     showComingSoonAlert("AI Summaries")
                 }
                 
+                // Early Grace Period
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text("Early Grace Period")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        Text("How many mins beforehand you can log")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 8) {
+                        Text("\(gracePeriod) min")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                        
+                        // Chevron indicator to show it's tappable
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .opacity(0.7)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if isPremiumUser {
+                        showGracePeriodPicker()
+                    } else {
+                        showPremiumUpgrade()
+                    }
+                }
+                
                 // Smart Notifications
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -721,7 +649,7 @@ struct ProfileView: View {
                                 .font(.caption2)
                                 .foregroundStyle(.orange)
                         }
-                        Text("Automatically pause reminders during calendar events")
+                        Text("Pause during calendar events")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -750,6 +678,7 @@ struct ProfileView: View {
         }
     }
     
+    /*
     private var notificationLogSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -816,6 +745,7 @@ struct ProfileView: View {
                 )
         )
     }
+    */
     
     // MARK: - Computed Properties
     
@@ -865,6 +795,10 @@ struct ProfileView: View {
             return name
         }
         return "User"
+    }
+    
+    private var personalMantra: String {
+        return "Building awareness of your time"
     }
     
     private var currentStreak: Int {
@@ -967,6 +901,27 @@ struct ProfileView: View {
         }
     }
     
+    private func showGracePeriodPicker() {
+        let alert = UIAlertController(title: "Early Grace Period", message: "Choose how many minutes beforehand you can log", preferredStyle: .actionSheet)
+        
+        let maxGracePeriod = Int(reminderInterval / 60)
+        let gracePeriods = Array(1...maxGracePeriod)
+        
+        for period in gracePeriods {
+            alert.addAction(UIAlertAction(title: "\(period) min", style: .default) { _ in
+                gracePeriod = period
+                saveSettingsToCoreData()
+            })
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(alert, animated: true)
+        }
+    }
+    
     private func showPremiumUpgrade() {
         let alert = UIAlertController(
             title: "Premium Feature",
@@ -1015,6 +970,7 @@ struct ProfileView: View {
             window.rootViewController?.present(alert, animated: true)
         }
     }
+    
     
     // MARK: - Settings Persistence
     
@@ -1229,3 +1185,4 @@ struct TimePickerSheet: View {
         }
     }
 }
+
