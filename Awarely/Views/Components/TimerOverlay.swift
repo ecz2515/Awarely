@@ -24,11 +24,11 @@ struct TimerOverlay: View {
                         .foregroundStyle(.blue)
                     
                     VStack(spacing: 8) {
-                        Text("See you at \(intervalTimer.formatFirstCheckInTimeTomorrow())")
+                        Text("See you at \(intervalTimer.formatNextFirstCheckInTime())")
                             .font(.title2.weight(.bold))
                             .foregroundStyle(.primary)
                         
-                        Text("Sleep well! Logging resumes tomorrow")
+                        Text("Take a break! You deserve it")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)

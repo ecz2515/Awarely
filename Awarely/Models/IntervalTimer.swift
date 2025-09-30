@@ -430,17 +430,33 @@ class IntervalTimer: ObservableObject {
         let now = Date()
         let userProfile = CoreDataManager.shared.getUserProfile()
         
+        // Compute today's notification start and end times
+        let today = calendar.startOfDay(for: now)
+        let notificationStartTime: Date
+        if let savedStartTime = userProfile?.notificationStartTime {
+            let savedStartComponents = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+            notificationStartTime = calendar.date(bySettingHour: savedStartComponents.hour ?? 9,
+                                                  minute: savedStartComponents.minute ?? 0,
+                                                  second: 0,
+                                                  of: today) ?? now
+        } else {
+            notificationStartTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? now
+        }
+        
+        // Treat pre-start as overnight gap
+        if now < notificationStartTime {
+            return true
+        }
+        
         // Check if we're past today's notification end time
         let notificationEndTime: Date
         if let savedEndTime = userProfile?.notificationEndTime {
-            let today = calendar.startOfDay(for: now)
             let savedEndComponents = calendar.dateComponents([.hour, .minute], from: savedEndTime)
             notificationEndTime = calendar.date(bySettingHour: savedEndComponents.hour ?? 18, 
                                               minute: savedEndComponents.minute ?? 0, 
                                               second: 0, 
                                               of: today) ?? now
         } else {
-            let today = calendar.startOfDay(for: now)
             notificationEndTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: today) ?? now
         }
         
@@ -478,5 +494,40 @@ class IntervalTimer: ObservableObject {
     func formatFirstCheckInTimeTomorrow() -> String {
         let firstCheckInTime = getFirstCheckInTimeTomorrow()
         return firstCheckInTime.formatted(date: .omitted, time: .shortened)
+    }
+
+    // MARK: - First check-in helpers for pre-start vs post-end
+    func getFirstCheckInTimeToday() -> Date {
+        let calendar = Calendar.current
+        let now = Date()
+        let userProfile = CoreDataManager.shared.getUserProfile()
+        let today = calendar.startOfDay(for: now)
+        
+        let startTime: Date
+        if let savedStartTime = userProfile?.notificationStartTime {
+            let comps = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+            startTime = calendar.date(bySettingHour: comps.hour ?? 9, minute: comps.minute ?? 0, second: 0, of: today) ?? today
+        } else {
+            startTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? today
+        }
+        return startTime.addingTimeInterval(interval)
+    }
+    
+    func formatNextFirstCheckInTime() -> String {
+        let calendar = Calendar.current
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
+        let userProfile = CoreDataManager.shared.getUserProfile()
+        
+        let notificationStartTime: Date
+        if let savedStartTime = userProfile?.notificationStartTime {
+            let comps = calendar.dateComponents([.hour, .minute], from: savedStartTime)
+            notificationStartTime = calendar.date(bySettingHour: comps.hour ?? 9, minute: comps.minute ?? 0, second: 0, of: today) ?? now
+        } else {
+            notificationStartTime = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today) ?? now
+        }
+        
+        let target = now < notificationStartTime ? getFirstCheckInTimeToday() : getFirstCheckInTimeTomorrow()
+        return target.formatted(date: .omitted, time: .shortened)
     }
 }
