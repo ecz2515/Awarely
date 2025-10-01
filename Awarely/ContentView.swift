@@ -36,36 +36,17 @@ struct ContentView: View {
     @State private var entries: [LogEntry] = []
     @State private var newEntry: String = ""
     @State private var selectedTags: Set<String> = []
-    @State private var customTags: [String] = ["Read", "Practice", "Work", "Journal", "Exercise", "Meditate", "Meetings"]
+    @State private var customTags: [String] = CoreDataManager.defaultTags
     @FocusState private var isFieldFocused: Bool
     @State private var notificationEnabled = true
     @State private var reminderInterval: TimeInterval = 30 * 60 // Default to 30 minutes
     @StateObject private var intervalTimer = IntervalTimer()
     @State private var shouldNavigateToHome = false
-    @State private var showOnboarding = false
-    
-    // Set this to true to force onboarding, false to use normal logic
-    private let forceOnboardingFlag = false
     
     @EnvironmentObject var coreDataManager: CoreDataManager
     
     var body: some View {
-        Group {
-            if showOnboarding {
-                OnboardingView()
-                    .onReceive(NotificationCenter.default.publisher(for: .profileCreated)) { _ in
-                        showOnboarding = false
-                        loadDataFromCoreData()
-                        // Request notification permission after onboarding is complete
-                        NotificationManager.shared.requestPermission()
-                    }
-            } else {
-                mainAppView
-            }
-        }
-        .onAppear {
-            checkFirstLaunch()
-        }
+        mainAppView
     }
     
     private var mainAppView: some View {
@@ -107,6 +88,8 @@ struct ContentView: View {
         .accentColor(.blue)
         .onAppear {
             print("📱 ContentView onAppear - app launched")
+            // Ensure a user profile exists for first-run scenarios
+            _ = coreDataManager.fetchOrCreateUserProfile()
             loadDataFromCoreData()
             intervalTimer.setEntries(entries)
             // Dismiss all delivered notifications when app appears
@@ -152,25 +135,6 @@ struct ContentView: View {
         .dismissKeyboardOnTap()
     }
     
-    // MARK: - First Launch Check
-    
-    private func checkFirstLaunch() {
-        // Check force flag first
-        if forceOnboardingFlag {
-            showOnboarding = true
-            return
-        }
-        
-        if let userProfile = coreDataManager.getUserProfile() {
-            // User profile exists, load data
-            showOnboarding = false
-            loadDataFromCoreData()
-        } else {
-            // First launch, show onboarding
-            showOnboarding = true
-        }
-    }
-    
     // MARK: - Core Data Operations
     
     private func loadDataFromCoreData() {
@@ -182,13 +146,9 @@ struct ContentView: View {
         if let userProfile = coreDataManager.getUserProfile() {
             notificationEnabled = userProfile.notificationEnabled
             reminderInterval = userProfile.reminderInterval
-            customTags = (userProfile.customTags as? [String]) ?? ["Read a book", "Practice violin", "Work on startup", "Journal", "Practice German", "Exercise", "Practice conducting", "Take multivitamins", "Meditate", "Work", "Work meetings"]
+            customTags = (userProfile.customTags as? [String]) ?? CoreDataManager.defaultTags
         }
         
-        // Only load sample data if this is the first launch (no user profile exists)
-        if entries.isEmpty && coreDataManager.getUserProfile() == nil {
-            loadSampleData()
-        }
     }
     
     private func saveEntriesToCoreData() {
@@ -224,86 +184,12 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Sample Data (for backward compatibility)
     
-    private func loadSampleData() {
-        // Add some sample entries for demonstration
-        if entries.isEmpty {
-            let calendar = Calendar.current
-            let date = Date()
-            
-            // Get the previous intervals using the interval timer logic
-            let currentIntervalStart = getCurrentIntervalStart()
-            let previousIntervalStart = currentIntervalStart.addingTimeInterval(-30 * 60) // 30 minutes back
-            let previousIntervalEnd = currentIntervalStart
-            
-            let twoIntervalsAgoStart = previousIntervalStart.addingTimeInterval(-30 * 60)
-            let twoIntervalsAgoEnd = previousIntervalStart
-            
-            let threeIntervalsAgoStart = twoIntervalsAgoStart.addingTimeInterval(-30 * 60)
-            let threeIntervalsAgoEnd = twoIntervalsAgoStart
-            
-            // Create sample entries for the last few intervals
-            let sampleEntries = [
-                LogEntry(
-                    text: "Worked on project documentation and reviewed code",
-                    tags: ["Work", "Documentation"],
-                    timestamp: previousIntervalStart.addingTimeInterval(15 * 60), // 15 minutes into the interval
-                    timePeriodStart: previousIntervalStart,
-                    timePeriodEnd: previousIntervalEnd
-                ),
-                LogEntry(
-                    text: "Practiced violin for 25 minutes, focused on scales and etudes",
-                    tags: ["Music", "Practice"],
-                    timestamp: twoIntervalsAgoStart.addingTimeInterval(10 * 60), // 10 minutes into the interval
-                    timePeriodStart: twoIntervalsAgoStart,
-                    timePeriodEnd: twoIntervalsAgoEnd
-                ),
-                LogEntry(
-                    text: "Read chapter 3 of 'Atomic Habits' and took notes",
-                    tags: ["Reading", "Learning"],
-                    timestamp: threeIntervalsAgoStart.addingTimeInterval(20 * 60), // 20 minutes into the interval
-                    timePeriodStart: threeIntervalsAgoStart,
-                    timePeriodEnd: threeIntervalsAgoEnd
-                )
-            ]
-            
-            entries = sampleEntries
-            
-            // Don't save sample entries to Core Data during initial load
-            // This prevents automatic profile creation and allows onboarding to show
-        }
-    }
-    
-    // Helper function to get current interval start (copied from IntervalTimer logic)
-    private func getCurrentIntervalStart() -> Date {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        // Get the current minute
-        let currentMinute = calendar.component(.minute, from: now)
-        
-        // Calculate the start of the current interval
-        let intervalStartMinute: Int
-        if currentMinute < 30 {
-            intervalStartMinute = 0
-        } else {
-            intervalStartMinute = 30
-        }
-        
-        // Create the interval start date
-        var components = calendar.dateComponents([.year, .month, .day, .hour], from: now)
-        components.minute = intervalStartMinute
-        components.second = 0
-        
-        return calendar.date(from: components) ?? now
-    }
 }
 
 // MARK: - Notification Extension
 
 extension Notification.Name {
-    static let profileCreated = Notification.Name("profileCreated")
     static let navigateToLogView = Notification.Name("navigateToLogView")
 }
 

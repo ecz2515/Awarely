@@ -5,6 +5,16 @@ import SwiftUI
 class CoreDataManager: ObservableObject {
     static let shared = CoreDataManager()
     
+    // Central source of truth for default quick tags
+    static let defaultTags: [String] = [
+        "Read",
+        "Work",
+        "Journal",
+        "Exercise",
+        "Meditate",
+        "Meetings"
+    ]
+    
     private let container: NSPersistentContainer
     
     var viewContext: NSManagedObjectContext {
@@ -43,7 +53,7 @@ class CoreDataManager: ObservableObject {
                 newProfile.notificationEnabled = true
                 newProfile.reminderInterval = 30 * 60
                 newProfile.loggingGracePeriod = 5
-                newProfile.customTags = ["Read", "Practice", "Work", "Journal", "Exercise", "Meditate", "Meetings"] as NSArray
+                newProfile.customTags = CoreDataManager.defaultTags as NSArray
                 newProfile.isPremiumUser = false
                 
                 // Set default notification times

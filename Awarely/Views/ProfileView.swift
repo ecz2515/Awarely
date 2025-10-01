@@ -56,6 +56,8 @@ struct ProfileView: View {
     @State private var showingEndTimePicker = false
     @State private var tempStartTime = Date()
     @State private var tempEndTime = Date()
+    @State private var showingNameEditor = false
+    @State private var tempName: String = ""
     
     // Notification permission states
     @State private var showingPermissionAlert = false
@@ -178,6 +180,18 @@ struct ProfileView: View {
                 }
             )
         }
+        .alert("Edit Name", isPresented: $showingNameEditor) {
+            TextField("Your name", text: $tempName)
+            Button("Save") {
+                let trimmed = tempName.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    coreDataManager.updateUserName(trimmed)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Update the name shown on your profile")
+        }
         .alert("Notification Permission", isPresented: $showingPermissionAlert) {
             Button("Settings") {
                 if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
@@ -218,7 +232,18 @@ struct ProfileView: View {
                 }
                 
                 VStack(spacing: 6) {
-                    Text(userName)
+                    HStack(spacing: 8) {
+                        Text(userName)
+                        Button(action: {
+                            tempName = userName
+                            showingNameEditor = true
+                        }) {
+                            Image(systemName: "pencil")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Edit name")
+                    }
                         .font(.title.weight(.bold))
                         .foregroundStyle(.primary)
                     
