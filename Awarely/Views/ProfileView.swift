@@ -69,40 +69,57 @@ struct ProfileView: View {
     
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                // Background
-                LinearGradient(
-                    colors: [
-                        Color(.systemBackground),
-                        Color(.systemBackground).opacity(0.95),
-                        Color(.secondarySystemBackground).opacity(0.3)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(spacing: 32) {
-                        // Profile Header Section
-                        profileHeaderSection
-                        
-                        // Notifications Section
-                        notificationsSection
-                        
-                        // Premium Features Section
-                        premiumFeaturesSection
-                        
-                        // Notification Log Section
-                        // notificationLogSection
-                        
-                        Spacer(minLength: 40)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 40)
-                    .padding(.bottom, 100)
+        ZStack {
+            // Background
+            LinearGradient(
+                colors: [
+                    Color(.systemBackground),
+                    Color(.systemBackground).opacity(0.95),
+                    Color(.secondarySystemBackground).opacity(0.3)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 32) {
+                    // Profile Header Section with Edit Button
+                    profileHeaderSection
+                    
+                    // Notifications Section
+                    notificationsSection
+                    
+                    // Premium Features Section
+                    premiumFeaturesSection
+                    
+                    // Notification Log Section
+                    // notificationLogSection
+                    
+                    Spacer(minLength: 40)
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 40)
+                .padding(.bottom, 100)
+            }
+            
+            // Floating Edit Button
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        tempName = userName
+                        showingNameEditor = true
+                    }) {
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundStyle(.blue)
+                    }
+                    .accessibilityLabel("Edit name")
+                    .padding(.trailing, 20)
+                    .padding(.top, 10)
+                }
+                Spacer()
             }
         }
         .onAppear {
@@ -232,18 +249,7 @@ struct ProfileView: View {
                 }
                 
                 VStack(spacing: 6) {
-                    HStack(spacing: 8) {
-                        Text(userName)
-                        Button(action: {
-                            tempName = userName
-                            showingNameEditor = true
-                        }) {
-                            Image(systemName: "pencil")
-                                .font(.caption)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Edit name")
-                    }
+                    Text(userName)
                         .font(.title.weight(.bold))
                         .foregroundStyle(.primary)
                     

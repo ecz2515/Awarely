@@ -41,25 +41,41 @@ struct HomeView: View {
                 )
                 .ignoresSafeArea()
                 
-                ScrollView {
+                VStack(spacing: 0) {
+                    // Date Title and View All Entries Button - always at top
                     VStack(spacing: 24) {
-                        // Date Title
                         dateTitleSection
-                        
-                        // Timer Status Section
-                        // timerStatusSection
-                        
-                        // View All Entries Button
                         viewAllEntriesButton
-                        
-                        // Today's Entries
-                        entriesSection
-                        
-                        Spacer(minLength: 40)
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 40)
-                    .padding(.bottom, 20)
+                    
+                    if todayEntries.isEmpty {
+                        // Show centered empty state when no entries
+                        VStack {
+                            Spacer()
+                            
+                            // Centered empty state
+                            emptyState
+                            
+                            Spacer()
+                        }
+                    } else {
+                        // Show scrollable content when there are entries
+                        ScrollView {
+                            VStack(spacing: 12) {
+                                // Add small spacing between "View All Entries" button and first entry
+                                Color.clear.frame(height: 12)
+                                
+                                // Today's Entries
+                                entriesSection
+                                
+                                Spacer(minLength: 40)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
+                        }
+                    }
                 }
             }
         }
@@ -161,25 +177,19 @@ struct HomeView: View {
 
     
     private var entriesSection: some View {
-        VStack(spacing: 0) {
-            if todayEntries.isEmpty {
-                emptyState
-            } else {
-                LazyVStack(spacing: 12) {
-                    ForEach(todayEntries) { entry in
-                        EnhancedEntryRow(entry: entry, customTags: customTags) { updated in
-                            if let idx = entries.firstIndex(where: { $0.id == updated.id }) {
-                                entries[idx] = updated
-                                // Save updated entry to Core Data
-                                coreDataManager.updateLogEntry(updated)
-                            }
-                        }
-                        .transition(.asymmetric(
-                            insertion: .scale.combined(with: .opacity),
-                            removal: .scale.combined(with: .opacity)
-                        ))
+        LazyVStack(spacing: 12) {
+            ForEach(todayEntries) { entry in
+                EnhancedEntryRow(entry: entry, customTags: customTags) { updated in
+                    if let idx = entries.firstIndex(where: { $0.id == updated.id }) {
+                        entries[idx] = updated
+                        // Save updated entry to Core Data
+                        coreDataManager.updateLogEntry(updated)
                     }
                 }
+                .transition(.asymmetric(
+                    insertion: .scale.combined(with: .opacity),
+                    removal: .scale.combined(with: .opacity)
+                ))
             }
         }
     }
@@ -199,7 +209,6 @@ struct HomeView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(40)
     }
     

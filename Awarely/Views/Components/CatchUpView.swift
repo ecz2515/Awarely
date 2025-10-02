@@ -139,7 +139,9 @@ struct CatchUpView: View {
     
     private var bulkActionSection: some View {
         VStack(spacing: 20) {
-            quickTagsSection
+            if !customTags.isEmpty {
+                quickTagsSection
+            }
             
             TextField("What did you accomplish?", text: $bulkText)
                 .textInputAutocapitalization(.sentences)
@@ -161,33 +163,19 @@ struct CatchUpView: View {
                         .strokeBorder(.quaternary, lineWidth: 0.5)
                 )
             
-            HStack(spacing: 12) {
-                Button("Log Selected") {
-                    markSelectedAsCompleted()
-                }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    bulkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    ? .secondary
-                    : Color.blue,
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                )
-                .disabled(bulkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                
-                Button("Skip") {
-                    selectedIntervals.removeAll()
-                    bulkText = ""
-                }
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    Color(.systemGray5),
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                )
+            Button("Log") {
+                markSelectedAsCompleted()
             }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                bulkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? .secondary
+                : Color.blue,
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .disabled(bulkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 20)
