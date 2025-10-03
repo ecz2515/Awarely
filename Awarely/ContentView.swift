@@ -90,6 +90,12 @@ struct ContentView: View {
             print("📱 ContentView onAppear - app launched")
             // Ensure a user profile exists for first-run scenarios
             _ = coreDataManager.fetchOrCreateUserProfile()
+            // One-time notification permission prompt on very first app launch
+            let hasLaunchedBefore = UserDefaults.standard.bool(forKey: "hasLaunchedBefore")
+            if !hasLaunchedBefore {
+                UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
+                NotificationManager.shared.requestPermission()
+            }
             loadDataFromCoreData()
             intervalTimer.setEntries(entries)
             // Dismiss all delivered notifications when app appears

@@ -787,9 +787,9 @@ struct ProfileView: View {
         
         switch notificationPermissionStatus {
         case .authorized:
-            return "Notifications enabled"
+            return "Enabled"
         case .denied:
-            return "Permission denied - check Settings"
+            return "Denied (check Settings)"
         case .notDetermined:
             return "Permission not requested"
         case .provisional:
